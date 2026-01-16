@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import ast
+import calendar
 import json
 from dataclasses import asdict, dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from urllib.error import URLError
 from urllib.request import urlopen
 from zoneinfo import ZoneInfo
@@ -176,15 +177,49 @@ def build_context(
     is_daytime = sunrise <= now.time() <= sunset
 
     current_weather, temperature = fetch_weather(place.latitude, place.longitude)
+    current_date = now.date()
+    last_day_of_month = date(
+        now.year,
+        now.month,
+        calendar.monthrange(now.year, now.month)[1],
+    )
+    days_until_end_of_month = (last_day_of_month - current_date).days
+    days_until_end_of_year = (date(now.year + 1, 1, 1) - current_date).days
+    current_quarter = f"Q{((now.month - 1) // 3) + 1}"
+    current_month_name = now.strftime("%B")
+    week_day_name = now.strftime("%A")
+    is_leap_year = calendar.isleap(now.year)
+    is_last_week_of_month = (current_date + timedelta(days=7)).month != now.month
+    is_morning = 5 <= now.hour < 12
+    is_afternoon = 12 <= now.hour < 17
+    is_evening = 17 <= now.hour <= 22
+    is_night = now.hour >= 23 or now.hour < 5
+    is_workday = now.weekday() < 5
+    is_business_hours = is_workday and 9 <= now.hour < 17
+    is_lunch_time = is_workday and 12 <= now.hour < 14
     context = {
         "current_time": now.time(),
-        "current_date": now.date(),
+        "current_date": current_date,
         "current_datetime": now,
         "current_hour": now.hour,
         "current_month": now.month,
+        "current_quarter": current_quarter,
+        "current_month_name": current_month_name,
         "current_year": now.year,
         "current_weekday": now.weekday(),
+        "week_day_name": week_day_name,
         "is_weekend": now.weekday() >= 5,
+        "is_workday": is_workday,
+        "is_business_hours": is_business_hours,
+        "is_lunch_time": is_lunch_time,
+        "is_morning": is_morning,
+        "is_afternoon": is_afternoon,
+        "is_evening": is_evening,
+        "is_night": is_night,
+        "is_leap_year": is_leap_year,
+        "is_last_week_of_month": is_last_week_of_month,
+        "days_until_end_of_month": days_until_end_of_month,
+        "days_until_end_of_year": days_until_end_of_year,
         "location_name": place.name,
         "country_code": place.country_code,
         "country_name": place.country_name,
