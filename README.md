@@ -115,6 +115,7 @@ Chronatrix builds the context from two sources:
 - `Place` fields (`name`, `country_code`, `country_name`, `timezone`, `latitude`, `longitude`).
 - `custom_context` passed to `build_context` (e.g., `{"temperature": 12, "user_role": "admin"}`).
 - `reference_datetime` passed to `build_context` to override the current date/time.
+- `holiday_zone` in `custom_context` (`"A"`, `"B"`, or `"C"`).
 
 These variables are entered by the user and remain unchanged unless you update them.
 If a `custom_context` key has the same name as a computed key, it overrides it.
@@ -127,6 +128,7 @@ String values from `custom_context` are returned in lowercase to match the rest 
 - Solar data (`sunrise_time`, `sunset_time`, `is_daytime`).
 - Weather (`current_weather`, `temperature`) via Open-Meteo.
 - French bank holiday flags for `country_code="FR"`.
+- French school holiday flags using `holiday_zone` and `vacances-scolaires-france`.
 
 These values change automatically based on time and location.
 
@@ -204,6 +206,14 @@ All string values returned in the context are normalized to lowercase (including
   - Description: The current French bank holiday name, if any.
   - Possible values: any bank holiday name in lowercase, or `null`.
   - Example: `"bastille_day"`.
+- `is_school_holiday` (`bool`)
+  - Description: Whether the current date is within French school holidays for the provided zone.
+  - Possible values: `true` or `false`.
+  - Example: `false`.
+- `current_school_holiday_name` (`str | None`)
+  - Description: The current French school holiday name for the provided zone, if any.
+  - Possible values: any school holiday name in lowercase, or `null`.
+  - Example: `"vacances_d_hiver"`.
 - `is_workday` (`bool`)
   - Description: Whether the current day is Monday through Friday.
   - Possible values: `true` or `false`.

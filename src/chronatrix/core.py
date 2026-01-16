@@ -14,6 +14,7 @@ from zoneinfo import ZoneInfo
 
 from astral import LocationInfo
 from astral.sun import sun
+from vacances_scolaires_france import SchoolHolidayDates
 
 LOGGER = logging.getLogger(__name__)
 
@@ -164,6 +165,72 @@ def bank_holiday_for(
     return None
 
 
+def school_holiday_status(
+    target_date: date,
+    zone: str | None,
+) -> tuple[bool, str | None]:
+    if not isinstance(zone, str):
+        return False, None
+    zone = zone.upper()
+    if zone not in {"A", "B", "C"}:
+        return False, None
+    holidays = SchoolHolidayDates()
+    is_holiday = _call_school_holiday_method(
+        holidays,
+        ("is_holiday", "isHoliday"),
+        target_date,
+        zone,
+    )
+    holiday = _call_school_holiday_method(
+        holidays,
+        ("get_holiday", "get_holiday_name", "getHoliday", "getHolidayName"),
+        target_date,
+        zone,
+    )
+    holiday_name = _extract_school_holiday_name(holiday)
+    if is_holiday is None:
+        is_holiday = holiday_name is not None
+    return bool(is_holiday), holiday_name
+
+
+def _call_school_holiday_method(
+    holidays: SchoolHolidayDates,
+    method_names: tuple[str, ...],
+    target_date: date,
+    zone: str,
+) -> object | None:
+    for name in method_names:
+        method = getattr(holidays, name, None)
+        if method is None:
+            continue
+        try:
+            return method(target_date, zone)
+        except TypeError:
+            try:
+                return method(zone, target_date)
+            except TypeError:
+                continue
+    return None
+
+
+def _extract_school_holiday_name(value: object) -> str | None:
+    if isinstance(value, str):
+        return value or None
+    if isinstance(value, dict):
+        for key in ("name", "label", "holiday"):
+            if isinstance(value.get(key), str):
+                return value[key] or None
+    if isinstance(value, (list, tuple)):
+        for item in value:
+            name = _extract_school_holiday_name(item)
+            if name:
+                return name
+    name_attr = getattr(value, "name", None)
+    if isinstance(name_attr, str):
+        return name_attr or None
+    return None
+
+
 def evaluate_condition(condition: str, context: dict[str, object]) -> bool:
     """Evaluate a Python boolean expression against a constrained context."""
     try:
@@ -303,6 +370,9 @@ def build_context(
     is_workday = now.weekday() < 5
     is_business_hours = is_workday and 9 <= now.hour < 17
     is_lunch_time = is_workday and 12 <= now.hour < 14
+    holiday_zone = None
+    if custom_context:
+        holiday_zone = custom_context.get("holiday_zone")
     bank_holiday_name = None
     if place.country_code.upper() == "FR":
         holidays = fetch_bank_holidays(
@@ -316,6 +386,10 @@ def build_context(
                     bank_holiday_name = holiday.name
                     break
     is_bank_holiday = bank_holiday_name is not None
+    is_school_holiday, current_school_holiday_name = school_holiday_status(
+        current_date,
+        holiday_zone,
+    )
     context = {
         "current_time": now.time(),
         "current_date": current_date,
@@ -353,6 +427,8 @@ def build_context(
         "temperature": temperature,
         "is_bank_holiday": is_bank_holiday,
         "current_bank_holiday_name": bank_holiday_name,
+        "is_school_holiday": is_school_holiday,
+        "current_school_holiday_name": current_school_holiday_name,
     }
     if custom_context:
         context |= custom_context
