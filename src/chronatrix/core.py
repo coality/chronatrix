@@ -506,7 +506,6 @@ def build_context(
     is_business_hours = is_workday and 9 <= now.hour < 17
     is_lunch_time = is_workday and 12 <= now.hour < 14
     school_holiday_name = None
-    next_school_holidays: list[dict[str, object]] = []
     if place.country_code.upper() == "FR":
         period = fetch_school_holiday_period(
             current_date,
@@ -518,17 +517,7 @@ def build_context(
             if period is not None and period.start <= current_date <= period.end
             else None
         )
-        next_school_holidays = fetch_school_holidays(
-            current_date,
-            school_zone,
-            debug=debug,
-        )
     is_school_holiday = school_holiday_name is not None
-    next_school_holidays_names = [
-        holiday.get("name")
-        for holiday in next_school_holidays
-        if isinstance(holiday, dict) and holiday.get("name")
-    ]
     bank_holiday_name = None
     if place.country_code.upper() == "FR":
         holidays = fetch_bank_holidays(
@@ -580,8 +569,6 @@ def build_context(
         "school_zone": school_zone,
         "is_school_holiday": is_school_holiday,
         "current_school_holiday_name": school_holiday_name,
-        "next_school_holidays": next_school_holidays,
-        "next_school_holidays_names": next_school_holidays_names,
         "is_bank_holiday": is_bank_holiday,
         "current_bank_holiday_name": bank_holiday_name,
     }
