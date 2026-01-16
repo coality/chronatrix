@@ -4,6 +4,7 @@ import ast
 import calendar
 import json
 import logging
+import re
 import unicodedata
 from dataclasses import asdict, dataclass
 from datetime import date, datetime, timedelta
@@ -481,7 +482,7 @@ def _normalize_text(value: str) -> str:
         for character in normalized
         if unicodedata.category(character) != "Mn"
     )
-    return stripped.lower()
+    return re.sub(r"[^a-z0-9_]", "_", stripped.lower())
 
 
 def format_context(context: dict[str, object], place: Place | None = None) -> str:
