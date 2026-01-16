@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ast
 import json
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import date, datetime
 from urllib.error import URLError
 from urllib.request import urlopen
@@ -201,3 +201,14 @@ def build_context(
     if custom_context:
         context |= custom_context
     return context
+
+
+def format_context(context: dict[str, object], place: Place | None = None) -> str:
+    """Return a formatted JSON string containing all context variables."""
+    payload = asdict(place) | context if place is not None else context
+    return json.dumps(payload, default=str, indent=2)
+
+
+def print_context(context: dict[str, object], place: Place | None = None) -> None:
+    """Print the full context as formatted JSON."""
+    print(format_context(context, place=place))
