@@ -8,6 +8,7 @@ Chronatrix is a contextual engine that evaluates logical conditions in real time
 - Sunrise/sunset via `astral`.
 - Seasons computed from latitude (north/south hemisphere).
 - Current weather from Open-Meteo.
+- French school holiday calendar support (zones A/B/C).
 - Controlled evaluation of simple Python expressions (including limited helper calls).
 - Simple Python library (no CLI).
 
@@ -41,7 +42,11 @@ place = Place(
     longitude=2.3522,
 )
 
-context = build_context(place, custom_context={"temperature": 12, "user_role": "admin"})
+context = build_context(
+    place,
+    custom_context={"temperature": 12, "user_role": "admin"},
+    school_zone="C",
+)
 condition = "current_hour >= 18 and is_weekend"
 result = evaluate_condition(condition, context)
 print(result)
@@ -85,6 +90,8 @@ Chronatrix builds the context from two sources:
 
 - `Place` fields (`name`, `country_code`, `country_name`, `timezone`, `latitude`, `longitude`).
 - `custom_context` passed to `build_context` (e.g., `{"temperature": 12, "user_role": "admin"}`).
+- `school_zone` passed to `build_context` (`"A"`, `"B"`, or `"C"` for France).
+- `reference_datetime` passed to `build_context` to override the current date/time.
 
 These variables are entered by the user and remain unchanged unless you update them.
 If a `custom_context` key has the same name as a computed key, it overrides it.
@@ -96,8 +103,25 @@ String values from `custom_context` are returned in lowercase to match the rest 
 - Calendar indicators (`is_weekend`, `current_season`).
 - Solar data (`sunrise_time`, `sunset_time`, `is_daytime`).
 - Weather (`current_weather`, `temperature`) via Open-Meteo.
+- French school holiday flags when `school_zone` is supplied.
+  - Note: the built-in calendar currently covers 2023-2025 dates and applies only to `country_code="FR"`.
 
 These values change automatically based on time and location.
+
+### Overriding the current date/time
+
+Use `reference_datetime` to evaluate the context for a specific moment. If the datetime
+is naive (no timezone), Chronatrix assumes the place time zone.
+
+```python
+from datetime import datetime
+
+context = build_context(
+    place,
+    reference_datetime=datetime(2024, 4, 12, 9, 30),
+    school_zone="B",
+)
+```
 
 ## Available context keys
 
@@ -150,6 +174,19 @@ All string values returned in the context are normalized to lowercase (including
   - Description: Whether the current day is Saturday or Sunday.
   - Possible values: `true` or `false`.
   - Example: `false`.
+
+- `school_zone` (`str | None`)
+  - Description: School holiday zone identifier for France.
+  - Possible values: `"A"`, `"B"`, `"C"`, or `null` if not provided.
+  - Example: `"C"`.
+- `is_school_holiday` (`bool`)
+  - Description: Whether the current date falls inside a French school holiday range.
+  - Possible values: `true` or `false`.
+  - Example: `true`.
+- `current_school_holiday_name` (`str | None`)
+  - Description: The current French school holiday name, if any.
+  - Possible values: `"winter_break"`, `"spring_break"`, `"summer_holidays"`, `"autumn_break"`, `"christmas_holidays"`, or `null`.
+  - Example: `"winter_break"`.
 - `is_workday` (`bool`)
   - Description: Whether the current day is Monday through Friday.
   - Possible values: `true` or `false`.

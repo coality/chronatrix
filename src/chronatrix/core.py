@@ -86,6 +86,65 @@ class Place:
     longitude: float
 
 
+@dataclass(frozen=True)
+class SchoolHolidayPeriod:
+    name: str
+    start: date
+    end: date
+
+
+FRENCH_SCHOOL_HOLIDAYS: dict[str, tuple[SchoolHolidayPeriod, ...]] = {
+    "A": (
+        SchoolHolidayPeriod("autumn_break", date(2023, 10, 21), date(2023, 11, 6)),
+        SchoolHolidayPeriod("christmas_holidays", date(2023, 12, 23), date(2024, 1, 8)),
+        SchoolHolidayPeriod("winter_break", date(2024, 2, 17), date(2024, 3, 4)),
+        SchoolHolidayPeriod("spring_break", date(2024, 4, 13), date(2024, 4, 29)),
+        SchoolHolidayPeriod("summer_holidays", date(2024, 7, 6), date(2024, 9, 2)),
+        SchoolHolidayPeriod("autumn_break", date(2024, 10, 19), date(2024, 11, 4)),
+        SchoolHolidayPeriod("christmas_holidays", date(2024, 12, 21), date(2025, 1, 6)),
+        SchoolHolidayPeriod("winter_break", date(2025, 2, 22), date(2025, 3, 10)),
+        SchoolHolidayPeriod("spring_break", date(2025, 4, 19), date(2025, 5, 5)),
+        SchoolHolidayPeriod("summer_holidays", date(2025, 7, 5), date(2025, 9, 1)),
+    ),
+    "B": (
+        SchoolHolidayPeriod("autumn_break", date(2023, 10, 21), date(2023, 11, 6)),
+        SchoolHolidayPeriod("christmas_holidays", date(2023, 12, 23), date(2024, 1, 8)),
+        SchoolHolidayPeriod("winter_break", date(2024, 2, 24), date(2024, 3, 11)),
+        SchoolHolidayPeriod("spring_break", date(2024, 4, 20), date(2024, 5, 6)),
+        SchoolHolidayPeriod("summer_holidays", date(2024, 7, 6), date(2024, 9, 2)),
+        SchoolHolidayPeriod("autumn_break", date(2024, 10, 19), date(2024, 11, 4)),
+        SchoolHolidayPeriod("christmas_holidays", date(2024, 12, 21), date(2025, 1, 6)),
+        SchoolHolidayPeriod("winter_break", date(2025, 2, 15), date(2025, 3, 3)),
+        SchoolHolidayPeriod("spring_break", date(2025, 4, 12), date(2025, 4, 28)),
+        SchoolHolidayPeriod("summer_holidays", date(2025, 7, 5), date(2025, 9, 1)),
+    ),
+    "C": (
+        SchoolHolidayPeriod("autumn_break", date(2023, 10, 21), date(2023, 11, 6)),
+        SchoolHolidayPeriod("christmas_holidays", date(2023, 12, 23), date(2024, 1, 8)),
+        SchoolHolidayPeriod("winter_break", date(2024, 2, 10), date(2024, 2, 26)),
+        SchoolHolidayPeriod("spring_break", date(2024, 4, 6), date(2024, 4, 22)),
+        SchoolHolidayPeriod("summer_holidays", date(2024, 7, 6), date(2024, 9, 2)),
+        SchoolHolidayPeriod("autumn_break", date(2024, 10, 19), date(2024, 11, 4)),
+        SchoolHolidayPeriod("christmas_holidays", date(2024, 12, 21), date(2025, 1, 6)),
+        SchoolHolidayPeriod("winter_break", date(2025, 2, 8), date(2025, 2, 24)),
+        SchoolHolidayPeriod("spring_break", date(2025, 4, 5), date(2025, 4, 21)),
+        SchoolHolidayPeriod("summer_holidays", date(2025, 7, 5), date(2025, 9, 1)),
+    ),
+}
+
+
+def school_holiday_for(target_date: date, zone: str | None) -> str | None:
+    if zone is None:
+        return None
+    periods = FRENCH_SCHOOL_HOLIDAYS.get(zone.upper())
+    if not periods:
+        return None
+    for period in periods:
+        if period.start <= target_date <= period.end:
+            return period.name
+    return None
+
+
 def evaluate_condition(condition: str, context: dict[str, object]) -> bool:
     """Evaluate a Python boolean expression against a constrained context."""
     try:
@@ -161,9 +220,16 @@ def fetch_weather(latitude: float, longitude: float) -> tuple[str | None, float 
 def build_context(
     place: Place,
     custom_context: dict[str, object] | None = None,
+    reference_datetime: datetime | None = None,
+    school_zone: str | None = None,
 ) -> dict[str, object]:
     tz = ZoneInfo(place.timezone)
-    now = datetime.now(tz)
+    if reference_datetime is None:
+        now = datetime.now(tz)
+    elif reference_datetime.tzinfo is None:
+        now = reference_datetime.replace(tzinfo=tz)
+    else:
+        now = reference_datetime.astimezone(tz)
 
     loc = LocationInfo(
         name=place.name,
@@ -199,6 +265,12 @@ def build_context(
     is_workday = now.weekday() < 5
     is_business_hours = is_workday and 9 <= now.hour < 17
     is_lunch_time = is_workday and 12 <= now.hour < 14
+    school_holiday_name = (
+        school_holiday_for(current_date, school_zone)
+        if place.country_code.upper() == "FR"
+        else None
+    )
+    is_school_holiday = school_holiday_name is not None
     context = {
         "current_time": now.time(),
         "current_date": current_date,
@@ -234,6 +306,9 @@ def build_context(
         "current_season": season_for(now.date(), place.latitude),
         "current_weather": current_weather or "unknown",
         "temperature": temperature,
+        "school_zone": school_zone,
+        "is_school_holiday": is_school_holiday,
+        "current_school_holiday_name": school_holiday_name,
     }
     if custom_context:
         context |= custom_context
