@@ -29,7 +29,6 @@ chronatrix "(current_hour >= 18 and is_weekend) or (temperature is not None and 
   --timezone Europe/Paris \
   --latitude 48.8566 \
   --longitude 2.3522 \
-  --language en \
   --show-context
 ```
 
@@ -71,11 +70,6 @@ Each argument supports a default and has an expected type. Examples show typical
   - Description: Print the full context as JSON after evaluation.
   - Possible values: `true`/`false`.
   - Example: `--show-context`.
-- `--language` (`str`, default `"en"`)
-  - Description: Language used for textual context values (season and weather labels).
-  - Possible values: `"en"`.
-  - Example: `"en"`.
-
 ## Usage (Python)
 
 ```python
@@ -90,7 +84,7 @@ place = Place(
     longitude=2.3522,
 )
 
-context = build_context(place, language="en")
+context = build_context(place)
 condition = "current_hour >= 18 and is_weekend"
 result = evaluate_condition(condition, context)
 print(result)

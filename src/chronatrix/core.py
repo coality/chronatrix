@@ -72,15 +72,6 @@ WEATHER_CODE_LABELS: dict[int, str] = {
     99: "thunderstorm_with_heavy_hail",
 }
 
-LANGUAGE_OPTIONS: set[str] = {"en"}
-
-
-def localize_context(context: dict[str, object], language: str) -> dict[str, object]:
-    if language not in LANGUAGE_OPTIONS:
-        raise ValueError(f"Unsupported language: {language}")
-    return dict(context)
-
-
 @dataclass(frozen=True)
 class Place:
     """Represents a geographic location used to build the evaluation context."""
@@ -166,7 +157,6 @@ def fetch_weather(latitude: float, longitude: float) -> tuple[str | None, float 
 
 def build_context(
     place: Place,
-    language: str = "en",
     custom_context: dict[str, object] | None = None,
 ) -> dict[str, object]:
     tz = ZoneInfo(place.timezone)
@@ -210,4 +200,4 @@ def build_context(
     }
     if custom_context:
         context |= custom_context
-    return localize_context(context, language)
+    return context

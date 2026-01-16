@@ -4,7 +4,7 @@ import argparse
 import json
 from dataclasses import asdict
 
-from chronatrix.core import LANGUAGE_OPTIONS, Place, build_context, evaluate_condition
+from chronatrix.core import Place, build_context, evaluate_condition
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -19,12 +19,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--timezone", default="Europe/Paris", help="Time zone.")
     parser.add_argument("--latitude", type=float, default=48.8566, help="Latitude.")
     parser.add_argument("--longitude", type=float, default=2.3522, help="Longitude.")
-    parser.add_argument(
-        "--language",
-        default="en",
-        choices=sorted(LANGUAGE_OPTIONS),
-        help="Context language for textual values (en).",
-    )
     parser.add_argument(
         "--show-context",
         action="store_true",
@@ -64,7 +58,7 @@ def main() -> int:
             parser.error("--custom-context must be a JSON object")
         custom_context = parsed_custom
 
-    context = build_context(place, language=args.language, custom_context=custom_context)
+    context = build_context(place, custom_context=custom_context)
     result = evaluate_condition(args.condition, context)
     print("true" if result else "false")
 
