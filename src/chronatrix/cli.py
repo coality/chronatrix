@@ -30,6 +30,14 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print the generated context as JSON.",
     )
+    parser.add_argument(
+        "--custom-context",
+        default="",
+        help=(
+            "JSON object of additional context variables. "
+            "Example: '{\"temperature\": 18, \"user\": \"alice\"}'."
+        ),
+    )
     return parser
 
 
@@ -46,7 +54,17 @@ def main() -> int:
         longitude=args.longitude,
     )
 
-    context = build_context(place, language=args.language)
+    custom_context: dict[str, object] | None = None
+    if args.custom_context:
+        try:
+            parsed_custom = json.loads(args.custom_context)
+        except json.JSONDecodeError as exc:
+            parser.error(f"Invalid JSON for --custom-context: {exc}")
+        if not isinstance(parsed_custom, dict):
+            parser.error("--custom-context must be a JSON object")
+        custom_context = parsed_custom
+
+    context = build_context(place, language=args.language, custom_context=custom_context)
     result = evaluate_condition(args.condition, context)
     print("true" if result else "false")
 
