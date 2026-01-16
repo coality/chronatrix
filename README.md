@@ -29,7 +29,7 @@ chronatrix "(current_hour >= 18 and is_weekend) or (temperature is not None and 
   --timezone Europe/Paris \
   --latitude 48.8566 \
   --longitude 2.3522 \
-  --language fr \
+  --language en \
   --show-context
 ```
 
@@ -73,8 +73,8 @@ Each argument supports a default and has an expected type. Examples show typical
   - Example: `--show-context`.
 - `--language` (`str`, default `"en"`)
   - Description: Language used for textual context values (season and weather labels).
-  - Possible values: `"en"`, `"fr"`.
-  - Example: `"fr"`.
+  - Possible values: `"en"`.
+  - Example: `"en"`.
 
 ## Usage (Python)
 
@@ -90,7 +90,7 @@ place = Place(
     longitude=2.3522,
 )
 
-context = build_context(place, language="fr")
+context = build_context(place, language="en")
 condition = "current_hour >= 18 and is_weekend"
 result = evaluate_condition(condition, context)
 print(result)
@@ -207,31 +207,22 @@ Each key below is always present in the context returned by `build_context`.
   - Example: `true`.
 - `current_season` (`str`)
   - Description: Season name computed from the date and latitude.
-  - Possible values: `"spring"`, `"summer"`, `"autumn"`, `"winter"` when `--language en`,
-    or `"printemps"`, `"été"`, `"automne"`, `"hiver"` when `--language fr`.
-  - Example: `"spring"` or `"printemps"`.
+  - Possible values: `"spring"`, `"summer"`, `"autumn"`, `"winter"`.
+  - Example: `"spring"`.
   - Note: For the southern hemisphere, seasons are inverted.
 
 ### Weather
 
 - `current_weather` (`str`)
   - Description: Weather label mapped from Open-Meteo codes.
-  - Possible values (language dependent):
-    - `--language en`: `"clear"`, `"mainly_clear"`, `"partly_cloudy"`, `"overcast"`, `"fog"`, `"depositing_rime_fog"`,
-      `"light_drizzle"`, `"moderate_drizzle"`, `"dense_drizzle"`, `"light_freezing_drizzle"`,
-      `"dense_freezing_drizzle"`, `"light_rain"`, `"moderate_rain"`, `"heavy_rain"`,
-      `"light_freezing_rain"`, `"heavy_freezing_rain"`, `"light_snow"`, `"moderate_snow"`, `"heavy_snow"`,
-      `"snow_grains"`, `"light_rain_showers"`, `"moderate_rain_showers"`, `"violent_rain_showers"`,
-      `"light_snow_showers"`, `"heavy_snow_showers"`, `"thunderstorm"`,
-      `"thunderstorm_with_light_hail"`, `"thunderstorm_with_heavy_hail"`, or `"unknown"`.
-    - `--language fr`: `"ciel_dégagé"`, `"principalement_dégagé"`, `"partiellement_nuageux"`, `"couvert"`,
-      `"brouillard"`, `"brouillard_givrant"`, `"bruine_faible"`, `"bruine_modérée"`, `"bruine_dense"`,
-      `"bruine_givrante_faible"`, `"bruine_givrante_dense"`, `"pluie_faible"`, `"pluie_modérée"`, `"forte_pluie"`,
-      `"pluie_givrante_faible"`, `"forte_pluie_givrante"`, `"neige_faible"`, `"neige_modérée"`, `"forte_neige"`,
-      `"grains_de_neige"`, `"averses_faibles"`, `"averses_modérées"`, `"averses_violentes"`,
-      `"averses_de_neige_faibles"`, `"averses_de_neige_fortes"`, `"orage"`,
-      `"orage_avec_grêle_faible"`, `"orage_avec_forte_grêle"`, or `"inconnu"`.
-  - Example: `"partly_cloudy"` or `"partiellement_nuageux"`.
+  - Possible values: `"clear"`, `"mainly_clear"`, `"partly_cloudy"`, `"overcast"`, `"fog"`, `"depositing_rime_fog"`,
+    `"light_drizzle"`, `"moderate_drizzle"`, `"dense_drizzle"`, `"light_freezing_drizzle"`,
+    `"dense_freezing_drizzle"`, `"light_rain"`, `"moderate_rain"`, `"heavy_rain"`,
+    `"light_freezing_rain"`, `"heavy_freezing_rain"`, `"light_snow"`, `"moderate_snow"`, `"heavy_snow"`,
+    `"snow_grains"`, `"light_rain_showers"`, `"moderate_rain_showers"`, `"violent_rain_showers"`,
+    `"light_snow_showers"`, `"heavy_snow_showers"`, `"thunderstorm"`,
+    `"thunderstorm_with_light_hail"`, `"thunderstorm_with_heavy_hail"`, or `"unknown"`.
+  - Example: `"partly_cloudy"`.
 - `temperature` (`float | None`)
   - Description: Current air temperature from Open-Meteo (°C).
   - Possible values: any real number, or `null` if unavailable.
