@@ -4,6 +4,7 @@ import ast
 import calendar
 import json
 import logging
+import unicodedata
 from dataclasses import asdict, dataclass
 from datetime import date, datetime, timedelta
 from urllib.error import URLError
@@ -158,6 +159,7 @@ def fetch_school_holiday_period(
     name = fields.get("description") or fields.get("nom") or fields.get("name")
     if not isinstance(name, str):
         return None
+    name = _normalize_text(name)
     start = _parse_api_date(fields.get("start_date"))
     end = _parse_api_date(fields.get("end_date"))
     if start is None or end is None:
@@ -209,6 +211,7 @@ def fetch_bank_holidays(
         name = entry.get("localName") or entry.get("name")
         if not isinstance(name, str):
             continue
+        name = _normalize_text(name)
         holiday_date = _parse_api_date(entry.get("date"))
         if holiday_date is None:
             continue
@@ -450,7 +453,7 @@ def build_context(
 
 def _lowercase_values(value: object) -> object:
     if isinstance(value, str):
-        return value.lower()
+        return _normalize_text(value)
     if isinstance(value, dict):
         return {key: _lowercase_values(item) for key, item in value.items()}
     if isinstance(value, list):
@@ -458,6 +461,16 @@ def _lowercase_values(value: object) -> object:
     if isinstance(value, tuple):
         return tuple(_lowercase_values(item) for item in value)
     return value
+
+
+def _normalize_text(value: str) -> str:
+    normalized = unicodedata.normalize("NFD", value)
+    stripped = "".join(
+        character
+        for character in normalized
+        if unicodedata.category(character) != "Mn"
+    )
+    return stripped.lower()
 
 
 def format_context(context: dict[str, object], place: Place | None = None) -> str:
