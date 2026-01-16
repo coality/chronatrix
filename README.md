@@ -1,16 +1,15 @@
 # Chronatrix
 
-Chronatrix is a contextual engine that evaluates logical conditions in real time based on a location (time zone, latitude/longitude) and environmental information (sunrise/sunset, season, etc.).
+Chronatrix is a contextual engine that evaluates logical conditions in real time based on a location (time zone, latitude/longitude) and environmental information (sunrise/sunset, seasons, and current weather).
 
 ## Features
-
 
 - Time context aligned with the geographic area.
 - Sunrise/sunset via `astral`.
 - Seasons computed from latitude (north/south hemisphere).
+- Current weather from Open-Meteo.
 - Controlled evaluation of simple Python expressions.
 - Ready-to-use CLI.
-
 
 ## Installation
 
@@ -35,6 +34,43 @@ chronatrix "(current_hour >= 18 and is_weekend) or (temperature is not None and 
 
 The command returns `true` or `false` and, with `--show-context`, prints the full context as JSON.
 
+### CLI arguments
+
+Each argument supports a default and has an expected type. Examples show typical values.
+
+- `condition` (`str`)
+  - Description: Python expression evaluated against the context.
+  - Possible values: any expression using the documented context keys (e.g., logical comparisons and arithmetic).
+  - Example: `"current_hour >= 18 and is_weekend"`.
+- `--name` (`str`, default `"Paris"`)
+  - Description: Place name.
+  - Possible values: any string describing a location.
+  - Example: `"Tokyo"`.
+- `--country-code` (`str`, default `"FR"`)
+  - Description: ISO country code.
+  - Possible values: two-letter ISO 3166-1 alpha-2 code.
+  - Example: `"JP"`.
+- `--country-name` (`str`, default `"France"`)
+  - Description: Country name.
+  - Possible values: any country name.
+  - Example: `"Japan"`.
+- `--timezone` (`str`, default `"Europe/Paris"`)
+  - Description: IANA time zone identifier.
+  - Possible values: any valid IANA time zone.
+  - Example: `"Asia/Tokyo"`.
+- `--latitude` (`float`, default `48.8566`)
+  - Description: Latitude in decimal degrees.
+  - Possible values: `-90.0` to `90.0`.
+  - Example: `35.6762`.
+- `--longitude` (`float`, default `2.3522`)
+  - Description: Longitude in decimal degrees.
+  - Possible values: `-180.0` to `180.0`.
+  - Example: `139.6503`.
+- `--show-context` (`bool` flag, default `false`)
+  - Description: Print the full context as JSON after evaluation.
+  - Possible values: `true`/`false`.
+  - Example: `--show-context`.
+
 ## Usage (Python)
 
 ```python
@@ -55,6 +91,34 @@ result = evaluate_condition(condition, context)
 print(result)
 ```
 
+### Place fields
+
+Each `Place` field is required and used to compute the context.
+
+- `name` (`str`)
+  - Description: Human-friendly place name.
+  - Possible values: any string.
+  - Example: `"Paris"`.
+- `country_code` (`str`)
+  - Description: ISO country code.
+  - Possible values: two-letter ISO 3166-1 alpha-2 codes.
+  - Example: `"FR"`.
+- `country_name` (`str`)
+  - Description: Country name.
+  - Possible values: any country name.
+  - Example: `"France"`.
+- `timezone` (`str`)
+  - Description: IANA time zone identifier.
+  - Possible values: valid IANA time zone values.
+  - Example: `"Europe/Paris"`.
+- `latitude` (`float`)
+  - Description: Latitude in decimal degrees.
+  - Possible values: `-90.0` to `90.0`.
+  - Example: `48.8566`.
+- `longitude` (`float`)
+  - Description: Longitude in decimal degrees.
+  - Possible values: `-180.0` to `180.0`.
+  - Example: `2.3522`.
 
 ## Available context keys
 
@@ -62,81 +126,108 @@ Each key below is always present in the context returned by `build_context`.
 
 ### Date and time
 
-- `current_time`: Current local time (`datetime.time`).
+- `current_time` (`datetime.time`)
+  - Description: Current local time.
   - Possible values: `00:00:00` to `23:59:59.999999`.
-- `current_date`: Current local date (`datetime.date`).
+  - Example: `14:37:05`.
+- `current_date` (`datetime.date`)
+  - Description: Current local date.
   - Possible values: any calendar date.
-- `current_datetime`: Current local date-time (`datetime.datetime`).
+  - Example: `2024-04-12`.
+- `current_datetime` (`datetime.datetime`)
+  - Description: Current local date-time (timezone-aware).
   - Possible values: any timezone-aware datetime for the configured time zone.
-- `current_hour`: Current local hour (`int`).
+  - Example: `2024-04-12 14:37:05+02:00`.
+- `current_hour` (`int`)
+  - Description: Current local hour.
   - Possible values: `0` to `23`.
-- `current_month`: Current local month (`int`).
+  - Example: `14`.
+- `current_month` (`int`)
+  - Description: Current local month.
   - Possible values: `1` to `12`.
-- `current_year`: Current local year (`int`).
+  - Example: `4`.
+- `current_year` (`int`)
+  - Description: Current local year.
   - Possible values: any four-digit year.
-- `current_weekday`: Current local weekday (`int`).
+  - Example: `2024`.
+- `current_weekday` (`int`)
+  - Description: Current local weekday.
   - Possible values: `0` to `6`, where `0 = Monday` and `6 = Sunday`.
-- `is_weekend`: Whether the current day is Saturday or Sunday (`bool`).
+  - Example: `2`.
+- `is_weekend` (`bool`)
+  - Description: Whether the current day is Saturday or Sunday.
   - Possible values: `true` or `false`.
+  - Example: `false`.
 
 ### Location
 
-- `location_name`: Place name (`str`).
+- `location_name` (`str`)
+  - Description: Place name.
   - Possible values: any string supplied in `Place.name`.
-- `country_code`: ISO country code (`str`).
+  - Example: `"Paris"`.
+- `country_code` (`str`)
+  - Description: ISO country code.
   - Possible values: any string supplied in `Place.country_code`.
-- `country_name`: Country name (`str`).
+  - Example: `"FR"`.
+- `country_name` (`str`)
+  - Description: Country name.
   - Possible values: any string supplied in `Place.country_name`.
-- `timezone`: IANA time zone identifier (`str`).
+  - Example: `"France"`.
+- `timezone` (`str`)
+  - Description: IANA time zone identifier.
   - Possible values: any valid IANA time zone (e.g., `Europe/Paris`).
-- `latitude`: Latitude (`float`).
+  - Example: `"Europe/Paris"`.
+- `latitude` (`float`)
+  - Description: Latitude in decimal degrees.
   - Possible values: `-90.0` to `90.0`.
-- `longitude`: Longitude (`float`).
+  - Example: `48.8566`.
+- `longitude` (`float`)
+  - Description: Longitude in decimal degrees.
   - Possible values: `-180.0` to `180.0`.
+  - Example: `2.3522`.
 
 ### Sun and seasons
 
-- `sunrise_time`: Local sunrise time (`datetime.time`).
+- `sunrise_time` (`datetime.time`)
+  - Description: Local sunrise time.
   - Possible values: `00:00:00` to `23:59:59.999999` (depends on location and date).
-- `sunset_time`: Local sunset time (`datetime.time`).
+  - Example: `06:42:18`.
+- `sunset_time` (`datetime.time`)
+  - Description: Local sunset time.
   - Possible values: `00:00:00` to `23:59:59.999999` (depends on location and date).
-- `is_daytime`: Whether it is between sunrise and sunset (`bool`).
+  - Example: `20:15:43`.
+- `is_daytime` (`bool`)
+  - Description: Whether it is between sunrise and sunset (inclusive).
   - Possible values: `true` or `false`.
-- `current_season`: Season name (`str`).
+  - Example: `true`.
+- `current_season` (`str`)
+  - Description: Season name computed from the date and latitude.
   - Possible values: `"spring"`, `"summer"`, `"autumn"`, `"winter"`.
+  - Example: `"spring"`.
   - Note: For the southern hemisphere, seasons are inverted.
 
-### Weather placeholders
+### Weather
 
-- `current_weather`: Placeholder string for future weather integration (`str`).
-  - Possible values: currently always `"unknown"`.
-- `temperature`: Placeholder temperature value (`float | None`).
-  - Possible values: currently always `null` (`None` in Python).
+- `current_weather` (`str`)
+  - Description: Weather label mapped from Open-Meteo codes.
+  - Possible values: `"clear"`, `"mainly_clear"`, `"partly_cloudy"`, `"overcast"`, `"fog"`, `"depositing_rime_fog"`,
+    `"light_drizzle"`, `"moderate_drizzle"`, `"dense_drizzle"`, `"light_freezing_drizzle"`, `"dense_freezing_drizzle"`,
+    `"light_rain"`, `"moderate_rain"`, `"heavy_rain"`, `"light_freezing_rain"`, `"heavy_freezing_rain"`,
+    `"light_snow"`, `"moderate_snow"`, `"heavy_snow"`, `"snow_grains"`, `"light_rain_showers"`,
+    `"moderate_rain_showers"`, `"violent_rain_showers"`, `"light_snow_showers"`, `"heavy_snow_showers"`,
+    `"thunderstorm"`, `"thunderstorm_with_light_hail"`, `"thunderstorm_with_heavy_hail"`, or `"unknown"`.
+  - Example: `"partly_cloudy"`.
+- `temperature` (`float | None`)
+  - Description: Current air temperature from Open-Meteo (°C).
+  - Possible values: any real number, or `null` if unavailable.
+  - Example: `12.4`.
 
 ## Expression safety
 
-The evaluator limits the AST to logical operations/comparisons and simple arithmetic. Any disallowed expression returns `false`.
+The evaluator limits the AST to logical operations, comparisons, and simple arithmetic. Any disallowed expression returns `false`.
 
 ## Roadmap
 
-- Connect to a weather API.
+- Adjust weather descriptors if needed.
 - Support public holidays per country.
 - Add place presets.
-=======
-## Clés de contexte disponibles
-
-- `current_time`, `current_date`, `current_datetime`
-- `current_hour`, `current_month`, `current_year`, `current_weekday`, `is_weekend`
-- `location_name`, `country_code`, `country_name`, `timezone`, `latitude`, `longitude`
-- `sunrise_time`, `sunset_time`, `is_daytime`, `current_season`
-- `current_weather`, `temperature` (via Open-Meteo)
-
-## Sécurité des expressions
-
-L'évaluation limite l'AST aux opérations logiques/comparaisons et à l'arithmétique simple. Toute expression non autorisée retourne `false`.
-
-## Roadmap
-
-- Ajustement des descripteurs météo.
-- Support des jours fériés par pays.
-- Ajout de presets de lieux.
