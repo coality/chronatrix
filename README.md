@@ -236,11 +236,6 @@ Each key below is always present in the context returned by `build_context`.
   - Description: Current air temperature from Open-Meteo (°C).
   - Possible values: any real number, or `null` if unavailable.
   - Example: `12.4`.
-- `freezing_probability` (`float | None`)
-  - Description: Probability (0-100) that temperatures will reach or fall below 0°C within the available forecast for the remainder of the current year, computed from Open-Meteo daily minimum forecasts.
-  - Possible values: `0.0` to `100.0`, or `null` if unavailable.
-  - Example: `25.0`.
-
 ## Expression safety
 
 The evaluator limits the AST to logical operations, comparisons, and simple arithmetic. Any disallowed expression returns `false`.
