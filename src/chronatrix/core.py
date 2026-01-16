@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 import calendar
 import json
+import logging
 from dataclasses import asdict, dataclass
 from datetime import date, datetime, timedelta
 from urllib.error import URLError
@@ -12,6 +13,8 @@ from zoneinfo import ZoneInfo
 
 from astral import LocationInfo
 from astral.sun import sun
+
+LOGGER = logging.getLogger(__name__)
 
 
 ALLOWED_AST_NODES: tuple[type[ast.AST], ...] = (
@@ -112,6 +115,7 @@ def _parse_api_date(value: object) -> date | None:
 def fetch_school_holiday_period(
     target_date: date,
     zone: str | None,
+    debug: bool = False,
 ) -> SchoolHolidayPeriod | None:
     if zone is None:
         return None
@@ -129,9 +133,20 @@ def fetch_school_holiday_period(
     )
     url = f"https://data.education.gouv.fr/api/records/1.0/search/?{query}"
     try:
+        if debug:
+            LOGGER.debug("Requesting school holidays: %s", url)
         with urlopen(url, timeout=10) as response:
             payload = json.load(response)
+            if debug:
+                LOGGER.debug(
+                    "School holidays response: status=%s headers=%s payload=%s",
+                    getattr(response, "status", "unknown"),
+                    dict(response.headers),
+                    payload,
+                )
     except (URLError, TimeoutError, json.JSONDecodeError):
+        if debug:
+            LOGGER.exception("Failed to fetch school holidays from %s", url)
         return None
 
     records = payload.get("records")
@@ -150,8 +165,12 @@ def fetch_school_holiday_period(
     return SchoolHolidayPeriod(name=name, start=start, end=end)
 
 
-def school_holiday_for(target_date: date, zone: str | None) -> str | None:
-    period = fetch_school_holiday_period(target_date, zone)
+def school_holiday_for(
+    target_date: date,
+    zone: str | None,
+    debug: bool = False,
+) -> str | None:
+    period = fetch_school_holiday_period(target_date, zone, debug=debug)
     if period is None:
         return None
     if period.start <= target_date <= period.end:
@@ -159,12 +178,27 @@ def school_holiday_for(target_date: date, zone: str | None) -> str | None:
     return None
 
 
-def fetch_bank_holidays(year: int, country_code: str) -> list[BankHoliday] | None:
+def fetch_bank_holidays(
+    year: int,
+    country_code: str,
+    debug: bool = False,
+) -> list[BankHoliday] | None:
     url = f"https://date.nager.at/api/v3/PublicHolidays/{year}/{country_code}"
     try:
+        if debug:
+            LOGGER.debug("Requesting bank holidays: %s", url)
         with urlopen(url, timeout=10) as response:
             payload = json.load(response)
+            if debug:
+                LOGGER.debug(
+                    "Bank holidays response: status=%s headers=%s payload=%s",
+                    getattr(response, "status", "unknown"),
+                    dict(response.headers),
+                    payload,
+                )
     except (URLError, TimeoutError, json.JSONDecodeError):
+        if debug:
+            LOGGER.exception("Failed to fetch bank holidays from %s", url)
         return None
     if not isinstance(payload, list):
         return None
@@ -182,10 +216,18 @@ def fetch_bank_holidays(year: int, country_code: str) -> list[BankHoliday] | Non
     return holidays
 
 
-def bank_holiday_for(target_date: date, country_code: str | None) -> str | None:
+def bank_holiday_for(
+    target_date: date,
+    country_code: str | None,
+    debug: bool = False,
+) -> str | None:
     if country_code is None:
         return None
-    holidays = fetch_bank_holidays(target_date.year, country_code.upper())
+    holidays = fetch_bank_holidays(
+        target_date.year,
+        country_code.upper(),
+        debug=debug,
+    )
     if not holidays:
         return None
     for holiday in holidays:
@@ -242,15 +284,30 @@ def season_for(target_date: date, latitude: float) -> str:
     }[season]
 
 
-def fetch_weather(latitude: float, longitude: float) -> tuple[str | None, float | None]:
+def fetch_weather(
+    latitude: float,
+    longitude: float,
+    debug: bool = False,
+) -> tuple[str | None, float | None]:
     url = (
         "https://api.open-meteo.com/v1/forecast?"
         f"latitude={latitude}&longitude={longitude}&current_weather=true"
     )
     try:
+        if debug:
+            LOGGER.debug("Requesting weather: %s", url)
         with urlopen(url, timeout=10) as response:
             payload = json.load(response)
+            if debug:
+                LOGGER.debug(
+                    "Weather response: status=%s headers=%s payload=%s",
+                    getattr(response, "status", "unknown"),
+                    dict(response.headers),
+                    payload,
+                )
     except (URLError, TimeoutError, json.JSONDecodeError):
+        if debug:
+            LOGGER.exception("Failed to fetch weather from %s", url)
         return None, None
 
     current = payload.get("current_weather")
@@ -271,6 +328,7 @@ def build_context(
     custom_context: dict[str, object] | None = None,
     reference_datetime: datetime | None = None,
     school_zone: str | None = None,
+    debug: bool = False,
 ) -> dict[str, object]:
     tz = ZoneInfo(place.timezone)
     if reference_datetime is None:
@@ -293,7 +351,11 @@ def build_context(
     sunset = solar["sunset"].time()
     is_daytime = sunrise <= now.time() <= sunset
 
-    current_weather, temperature = fetch_weather(place.latitude, place.longitude)
+    current_weather, temperature = fetch_weather(
+        place.latitude,
+        place.longitude,
+        debug=debug,
+    )
     current_date = now.date()
     last_day_of_month = date(
         now.year,
@@ -314,17 +376,31 @@ def build_context(
     is_workday = now.weekday() < 5
     is_business_hours = is_workday and 9 <= now.hour < 17
     is_lunch_time = is_workday and 12 <= now.hour < 14
-    school_holiday_name = (
-        school_holiday_for(current_date, school_zone)
-        if place.country_code.upper() == "FR"
-        else None
-    )
+    school_holiday_name = None
+    if place.country_code.upper() == "FR":
+        period = fetch_school_holiday_period(
+            current_date,
+            school_zone,
+            debug=debug,
+        )
+        school_holiday_name = (
+            period.name
+            if period is not None and period.start <= current_date <= period.end
+            else None
+        )
     is_school_holiday = school_holiday_name is not None
-    bank_holiday_name = (
-        bank_holiday_for(current_date, place.country_code)
-        if place.country_code.upper() == "FR"
-        else None
-    )
+    bank_holiday_name = None
+    if place.country_code.upper() == "FR":
+        holidays = fetch_bank_holidays(
+            current_date.year,
+            place.country_code.upper(),
+            debug=debug,
+        )
+        if holidays:
+            for holiday in holidays:
+                if holiday.date == current_date:
+                    bank_holiday_name = holiday.name
+                    break
     is_bank_holiday = bank_holiday_name is not None
     context = {
         "current_time": now.time(),

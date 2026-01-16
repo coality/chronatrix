@@ -46,11 +46,37 @@ context = build_context(
     place,
     custom_context={"temperature": 12, "user_role": "admin"},
     school_zone="C",
+    debug=True,
 )
 condition = "current_hour >= 18 and is_weekend"
 result = evaluate_condition(condition, context)
 print(result)
 print_context(context, place=place)
+```
+
+### Debugging API calls
+
+Enable debug logging to see detailed API requests, responses, and errors for
+weather and holiday lookups. Chronatrix uses the standard Python logging
+system, so configure logging in your application and pass `debug=True` to
+`build_context`:
+
+```python
+import logging
+from chronatrix import Place, build_context
+
+logging.basicConfig(level=logging.DEBUG)
+
+place = Place(
+    name="Paris",
+    country_code="FR",
+    country_name="France",
+    timezone="Europe/Paris",
+    latitude=48.8566,
+    longitude=2.3522,
+)
+
+context = build_context(place, debug=True)
 ```
 
 ### Place fields
