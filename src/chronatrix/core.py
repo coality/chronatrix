@@ -207,6 +207,56 @@ def fetch_weather(latitude: float, longitude: float) -> tuple[str | None, float 
     return label, temp_value
 
 
+def fetch_freezing_probability(
+    latitude: float,
+    longitude: float,
+    target_date: date,
+    timezone: str,
+) -> float | None:
+    url = (
+        "https://api.open-meteo.com/v1/forecast?"
+        f"latitude={latitude}&longitude={longitude}"
+        "&daily=temperature_2m_min"
+        "&forecast_days=16"
+        f"&timezone={timezone}"
+    )
+    try:
+        with urlopen(url, timeout=10) as response:
+            payload = json.load(response)
+    except (URLError, TimeoutError, json.JSONDecodeError):
+        return None
+
+    daily = payload.get("daily")
+    if not isinstance(daily, dict):
+        return None
+
+    dates = daily.get("time")
+    temps = daily.get("temperature_2m_min")
+    if not isinstance(dates, list) or not isinstance(temps, list):
+        return None
+
+    total_days = 0
+    freezing_days = 0
+    for date_str, temp in zip(dates, temps):
+        if not isinstance(date_str, str):
+            continue
+        try:
+            forecast_date = date.fromisoformat(date_str)
+        except ValueError:
+            continue
+        if forecast_date.year != target_date.year or forecast_date < target_date:
+            continue
+        if not isinstance(temp, (int, float)):
+            continue
+        total_days += 1
+        if temp <= 0:
+            freezing_days += 1
+
+    if total_days == 0:
+        return None
+    return round((freezing_days / total_days) * 100, 1)
+
+
 def build_context(place: Place, language: str = "en") -> dict[str, object]:
     tz = ZoneInfo(place.timezone)
     now = datetime.now(tz)
@@ -225,6 +275,12 @@ def build_context(place: Place, language: str = "en") -> dict[str, object]:
     is_daytime = sunrise <= now.time() <= sunset
 
     current_weather, temperature = fetch_weather(place.latitude, place.longitude)
+    freezing_probability = fetch_freezing_probability(
+        place.latitude,
+        place.longitude,
+        now.date(),
+        place.timezone,
+    )
 
     context = {
         "current_time": now.time(),
@@ -247,5 +303,6 @@ def build_context(place: Place, language: str = "en") -> dict[str, object]:
         "current_season": season_for(now.date(), place.latitude),
         "current_weather": current_weather or "unknown",
         "temperature": temperature,
+        "freezing_probability": freezing_probability,
     }
     return localize_context(context, language)
