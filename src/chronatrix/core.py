@@ -18,6 +18,10 @@ from astral.sun import sun
 
 LOGGER = logging.getLogger(__name__)
 
+SCHOOL_HOLIDAY_API_BASE = (
+    "https://data.education.gouv.fr/api/explore/v2.1/"
+    "catalog/datasets/fr-en-calendrier-scolaire/records"
+)
 
 ALLOWED_AST_NODES: tuple[type[ast.AST], ...] = (
     ast.Expression,
@@ -105,6 +109,14 @@ class BankHoliday:
     date: date
 
 
+def _add_one_year(value: date) -> date:
+    try:
+        return date(value.year + 1, value.month, value.day)
+    except ValueError:
+        last_day = calendar.monthrange(value.year + 1, value.month)[1]
+        return date(value.year + 1, value.month, last_day)
+
+
 def _parse_api_date(value: object) -> date | None:
     if not isinstance(value, str):
         return None
@@ -114,6 +126,86 @@ def _parse_api_date(value: object) -> date | None:
         return None
 
 
+def _format_school_zone(zone: str) -> str:
+    cleaned = zone.strip()
+    if len(cleaned) == 1 and cleaned.upper() in {"A", "B", "C"}:
+        return f"Zone {cleaned.upper()}"
+    if cleaned.lower().startswith("zone"):
+        return f"Zone {cleaned.split()[-1].upper()}"
+    return cleaned
+
+
+def _normalize_population(value: object) -> str:
+    if not isinstance(value, str):
+        return ""
+    normalized = unicodedata.normalize("NFD", value)
+    stripped = "".join(
+        character
+        for character in normalized
+        if unicodedata.category(character) != "Mn"
+    )
+    return stripped.strip().lower()
+
+
+def _should_keep_population(value: object) -> bool:
+    population = _normalize_population(value)
+    return population in {"-", "eleves", "eleve"}
+
+
+def _fetch_school_holiday_rows(
+    where: str,
+    order_by: str,
+    debug: bool = False,
+    limit: int = 100,
+) -> list[dict[str, object]]:
+    offset = 0
+    results: list[dict[str, object]] = []
+
+    while True:
+        query = urlencode(
+            {
+                "where": where,
+                "order_by": order_by,
+                "limit": limit,
+                "offset": offset,
+            },
+        )
+        url = f"{SCHOOL_HOLIDAY_API_BASE}?{query}"
+        try:
+            if debug:
+                LOGGER.debug("Requesting school holidays: %s", url)
+            with urlopen(url, timeout=20) as response:
+                payload = json.load(response)
+                if debug:
+                    LOGGER.debug(
+                        "School holidays response: status=%s headers=%s payload=%s",
+                        getattr(response, "status", "unknown"),
+                        dict(response.headers),
+                        payload,
+                    )
+        except (URLError, TimeoutError, json.JSONDecodeError):
+            if debug:
+                LOGGER.exception("Failed to fetch school holidays from %s", url)
+            break
+
+        if not isinstance(payload, dict):
+            if debug:
+                LOGGER.debug("School holidays payload was not a dict: %s", payload)
+            break
+
+        rows = payload.get("results")
+        if not isinstance(rows, list) or not rows:
+            break
+
+        for row in rows:
+            if isinstance(row, dict):
+                results.append(row)
+
+        offset += limit
+
+    return results
+
+
 def fetch_school_holiday_period(
     target_date: date,
     zone: str | None,
@@ -121,62 +213,37 @@ def fetch_school_holiday_period(
 ) -> SchoolHolidayPeriod | None:
     if zone is None:
         return None
-    query = urlencode(
-        {
-            "dataset": "fr-en-calendrier-scolaire",
-            "rows": 1,
-            "sort": "-start_date",
-            "refine.zones": zone.upper(),
-            "where": (
-                f"start_date <= '{target_date.isoformat()}' "
-                f"AND end_date >= '{target_date.isoformat()}'"
-            ),
-        },
+    zone_value = _format_school_zone(zone)
+    where = (
+        f"zones = '{zone_value}' "
+        f"and start_date <= '{target_date.isoformat()}' "
+        f"and end_date >= '{target_date.isoformat()}'"
     )
-    url = f"https://data.education.gouv.fr/api/records/1.0/search/?{query}"
-    try:
-        if debug:
-            LOGGER.debug("Requesting school holidays: %s", url)
-        with urlopen(url, timeout=10) as response:
-            payload = json.load(response)
-            if debug:
-                LOGGER.debug(
-                    "School holidays response: status=%s headers=%s payload=%s",
-                    getattr(response, "status", "unknown"),
-                    dict(response.headers),
-                    payload,
-                )
-    except (URLError, TimeoutError, json.JSONDecodeError):
-        if debug:
-            LOGGER.exception("Failed to fetch school holidays from %s", url)
-        return None
-
-    if not isinstance(payload, dict):
-        if debug:
-            LOGGER.debug("School holidays payload was not a dict: %s", payload)
-        return None
-
-    records = payload.get("records")
-    if not isinstance(records, list) or not records:
+    rows = _fetch_school_holiday_rows(
+        where=where,
+        order_by="-start_date",
+        debug=debug,
+        limit=1,
+    )
+    if not rows:
         if debug:
             LOGGER.debug(
                 "School holidays payload had no records for zone=%s date=%s",
-                zone,
+                zone_value,
                 target_date,
             )
         return None
-    fields = records[0].get("fields")
-    if not isinstance(fields, dict):
+    row = rows[0]
+    if not _should_keep_population(row.get("population")):
         return None
-    name = fields.get("description") or fields.get("nom") or fields.get("name")
+    name = row.get("description") or row.get("nom") or row.get("name")
     if not isinstance(name, str):
         return None
-    name = _normalize_text(name)
-    start = _parse_api_date(fields.get("start_date"))
-    end = _parse_api_date(fields.get("end_date"))
+    start = _parse_api_date(row.get("start_date"))
+    end = _parse_api_date(row.get("end_date"))
     if start is None or end is None:
         return None
-    return SchoolHolidayPeriod(name=name, start=start, end=end)
+    return SchoolHolidayPeriod(name=_lowercase_values(name), start=start, end=end)
 
 
 def school_holiday_for(
@@ -190,6 +257,53 @@ def school_holiday_for(
     if period.start <= target_date <= period.end:
         return period.name
     return None
+
+
+def fetch_school_holidays(
+    reference_date: date,
+    zone: str | None,
+    debug: bool = False,
+) -> list[dict[str, object]]:
+    if zone is None:
+        return []
+    zone_value = _format_school_zone(zone)
+    end_date = _add_one_year(reference_date)
+    where = (
+        f"zones = '{zone_value}' "
+        f"and end_date >= '{reference_date.isoformat()}' "
+        f"and start_date < '{end_date.isoformat()}'"
+    )
+    rows = _fetch_school_holiday_rows(
+        where=where,
+        order_by="start_date",
+        debug=debug,
+    )
+    seen: set[tuple[str, date, date]] = set()
+    holidays: list[dict[str, object]] = []
+    for row in rows:
+        if not _should_keep_population(row.get("population")):
+            continue
+        name = row.get("description") or row.get("nom") or row.get("name")
+        if not isinstance(name, str):
+            continue
+        start = _parse_api_date(row.get("start_date"))
+        end = _parse_api_date(row.get("end_date"))
+        if start is None or end is None:
+            continue
+        key = (name, start, end)
+        if key in seen:
+            continue
+        seen.add(key)
+        holidays.append(
+            {
+                "name": _lowercase_values(name),
+                "start": start,
+                "end": end,
+                "zone": row.get("zones"),
+                "school_year": row.get("annee_scolaire"),
+            },
+        )
+    return holidays
 
 
 def fetch_bank_holidays(
@@ -392,6 +506,7 @@ def build_context(
     is_business_hours = is_workday and 9 <= now.hour < 17
     is_lunch_time = is_workday and 12 <= now.hour < 14
     school_holiday_name = None
+    next_school_holidays: list[dict[str, object]] = []
     if place.country_code.upper() == "FR":
         period = fetch_school_holiday_period(
             current_date,
@@ -403,7 +518,17 @@ def build_context(
             if period is not None and period.start <= current_date <= period.end
             else None
         )
+        next_school_holidays = fetch_school_holidays(
+            current_date,
+            school_zone,
+            debug=debug,
+        )
     is_school_holiday = school_holiday_name is not None
+    next_school_holidays_names = [
+        holiday.get("name")
+        for holiday in next_school_holidays
+        if isinstance(holiday, dict) and holiday.get("name")
+    ]
     bank_holiday_name = None
     if place.country_code.upper() == "FR":
         holidays = fetch_bank_holidays(
@@ -455,6 +580,8 @@ def build_context(
         "school_zone": school_zone,
         "is_school_holiday": is_school_holiday,
         "current_school_holiday_name": school_holiday_name,
+        "next_school_holidays": next_school_holidays,
+        "next_school_holidays_names": next_school_holidays_names,
         "is_bank_holiday": is_bank_holiday,
         "current_bank_holiday_name": bank_holiday_name,
     }
