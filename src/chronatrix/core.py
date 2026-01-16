@@ -94,6 +94,12 @@ class SchoolHolidayPeriod:
     end: date
 
 
+@dataclass(frozen=True)
+class BankHoliday:
+    name: str
+    date: date
+
+
 def _parse_api_date(value: object) -> date | None:
     if not isinstance(value, str):
         return None
@@ -150,6 +156,41 @@ def school_holiday_for(target_date: date, zone: str | None) -> str | None:
         return None
     if period.start <= target_date <= period.end:
         return period.name
+    return None
+
+
+def fetch_bank_holidays(year: int, country_code: str) -> list[BankHoliday] | None:
+    url = f"https://date.nager.at/api/v3/PublicHolidays/{year}/{country_code}"
+    try:
+        with urlopen(url, timeout=10) as response:
+            payload = json.load(response)
+    except (URLError, TimeoutError, json.JSONDecodeError):
+        return None
+    if not isinstance(payload, list):
+        return None
+    holidays: list[BankHoliday] = []
+    for entry in payload:
+        if not isinstance(entry, dict):
+            continue
+        name = entry.get("localName") or entry.get("name")
+        if not isinstance(name, str):
+            continue
+        holiday_date = _parse_api_date(entry.get("date"))
+        if holiday_date is None:
+            continue
+        holidays.append(BankHoliday(name=name, date=holiday_date))
+    return holidays
+
+
+def bank_holiday_for(target_date: date, country_code: str | None) -> str | None:
+    if country_code is None:
+        return None
+    holidays = fetch_bank_holidays(target_date.year, country_code.upper())
+    if not holidays:
+        return None
+    for holiday in holidays:
+        if holiday.date == target_date:
+            return holiday.name
     return None
 
 
@@ -279,6 +320,12 @@ def build_context(
         else None
     )
     is_school_holiday = school_holiday_name is not None
+    bank_holiday_name = (
+        bank_holiday_for(current_date, place.country_code)
+        if place.country_code.upper() == "FR"
+        else None
+    )
+    is_bank_holiday = bank_holiday_name is not None
     context = {
         "current_time": now.time(),
         "current_date": current_date,
@@ -317,6 +364,8 @@ def build_context(
         "school_zone": school_zone,
         "is_school_holiday": is_school_holiday,
         "current_school_holiday_name": school_holiday_name,
+        "is_bank_holiday": is_bank_holiday,
+        "current_bank_holiday_name": bank_holiday_name,
     }
     if custom_context:
         context |= custom_context
