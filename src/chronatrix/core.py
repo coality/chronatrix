@@ -312,12 +312,25 @@ def build_context(
     }
     if custom_context:
         context |= custom_context
-    return context
+    return _lowercase_values(context)
+
+
+def _lowercase_values(value: object) -> object:
+    if isinstance(value, str):
+        return value.lower()
+    if isinstance(value, dict):
+        return {key: _lowercase_values(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_lowercase_values(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_lowercase_values(item) for item in value)
+    return value
 
 
 def format_context(context: dict[str, object], place: Place | None = None) -> str:
     """Return a formatted JSON string containing all context variables."""
     payload = asdict(place) | context if place is not None else context
+    payload = _lowercase_values(payload)
     return json.dumps(payload, default=str, indent=2)
 
 
