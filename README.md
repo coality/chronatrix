@@ -9,67 +9,18 @@ Chronatrix is a contextual engine that evaluates logical conditions in real time
 - Seasons computed from latitude (north/south hemisphere).
 - Current weather from Open-Meteo.
 - Controlled evaluation of simple Python expressions (including limited helper calls).
-- Ready-to-use CLI.
+- Simple Python library (no CLI).
 
-## Installation
+## Installation (depuis Git)
 
 ```bash
+git clone https://github.com/coality/chronatrix.git
+cd chronatrix
 python -m venv .venv
 source .venv/bin/activate
 pip install -e .
 ```
 
-## Usage (CLI)
-
-```bash
-chronatrix "(current_hour >= 18 and is_weekend) or (temperature is not None and temperature < 5)" \
-  --name Paris \
-  --country-code FR \
-  --country-name France \
-  --timezone Europe/Paris \
-  --latitude 48.8566 \
-  --longitude 2.3522 \
-  --show-context
-```
-
-The command returns `true` or `false` and, with `--show-context`, prints the full context as JSON.
-
-### CLI arguments
-
-Each argument supports a default and has an expected type. Examples show typical values.
-
-- `condition` (`str`)
-  - Description: Python expression evaluated against the context.
-  - Possible values: any expression using the documented context keys (e.g., logical comparisons and arithmetic).
-  - Example: `"current_hour >= 18 and is_weekend"`.
-- `--name` (`str`, default `"Paris"`)
-  - Description: Place name.
-  - Possible values: any string describing a location.
-  - Example: `"Tokyo"`.
-- `--country-code` (`str`, default `"FR"`)
-  - Description: ISO country code.
-  - Possible values: two-letter ISO 3166-1 alpha-2 code.
-  - Example: `"JP"`.
-- `--country-name` (`str`, default `"France"`)
-  - Description: Country name.
-  - Possible values: any country name.
-  - Example: `"Japan"`.
-- `--timezone` (`str`, default `"Europe/Paris"`)
-  - Description: IANA time zone identifier.
-  - Possible values: any valid IANA time zone.
-  - Example: `"Asia/Tokyo"`.
-- `--latitude` (`float`, default `48.8566`)
-  - Description: Latitude in decimal degrees.
-  - Possible values: `-90.0` to `90.0`.
-  - Example: `35.6762`.
-- `--longitude` (`float`, default `2.3522`)
-  - Description: Longitude in decimal degrees.
-  - Possible values: `-180.0` to `180.0`.
-  - Example: `139.6503`.
-- `--show-context` (`bool` flag, default `false`)
-  - Description: Print the full context as JSON after evaluation.
-  - Possible values: `true`/`false`.
-  - Example: `--show-context`.
 ## Usage (Python)
 
 ```python
@@ -84,7 +35,7 @@ place = Place(
     longitude=2.3522,
 )
 
-context = build_context(place)
+context = build_context(place, custom_context={"temperature": 12, "user_role": "admin"})
 condition = "current_hour >= 18 and is_weekend"
 result = evaluate_condition(condition, context)
 print(result)
@@ -119,6 +70,27 @@ Each `Place` field is required and used to compute the context.
   - Description: Longitude in decimal degrees.
   - Possible values: `-180.0` to `180.0`.
   - Example: `2.3522`.
+
+## Variables statiques vs dynamiques
+
+Chronatrix construit le contexte à partir de deux sources :
+
+### Variables statiques (fournies par l'utilisateur)
+
+- Champs `Place` (`name`, `country_code`, `country_name`, `timezone`, `latitude`, `longitude`).
+- `custom_context` passé à `build_context` (ex : `{"temperature": 12, "user_role": "admin"}`).
+
+Ces variables sont saisies par l'utilisateur et restent inchangées tant que vous ne les modifiez pas.
+Si une clé de `custom_context` a le même nom qu'une clé calculée, elle la remplace.
+
+### Variables dynamiques (calculées par Chronatrix)
+
+- Date/heure locale (`current_time`, `current_date`, `current_datetime`, `current_hour`, etc.).
+- Indicateurs calendaires (`is_weekend`, `current_season`).
+- Données solaires (`sunrise_time`, `sunset_time`, `is_daytime`).
+- Météo (`current_weather`, `temperature`) via Open-Meteo.
+
+Ces valeurs changent automatiquement en fonction de l'heure et de la localisation.
 
 ## Available context keys
 
