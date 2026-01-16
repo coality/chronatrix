@@ -11,6 +11,12 @@ Chronatrix is a contextual engine that evaluates logical conditions in real time
 - Controlled evaluation of simple Python expressions (including limited helper calls).
 - Simple Python library (no CLI).
 
+## Installation (PyPI)
+
+```bash
+pip install chronatrix
+```
+
 ## Installation (depuis Git)
 
 ```bash
@@ -205,3 +211,24 @@ Any disallowed expression returns `false`.
 - Adjust weather descriptors if needed.
 - Support public holidays per country.
 - Add place presets.
+
+## Publication sur PyPI
+
+1. Mettre à jour la version dans `pyproject.toml`.
+2. Construire les distributions :
+
+   ```bash
+   python -m build
+   ```
+
+3. Vérifier les artefacts :
+
+   ```bash
+   python -m twine check dist/*
+   ```
+
+4. Publier :
+
+   ```bash
+   python -m twine upload dist/*
+   ```
