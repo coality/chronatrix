@@ -150,8 +150,19 @@ def fetch_school_holiday_period(
             LOGGER.exception("Failed to fetch school holidays from %s", url)
         return None
 
+    if not isinstance(payload, dict):
+        if debug:
+            LOGGER.debug("School holidays payload was not a dict: %s", payload)
+        return None
+
     records = payload.get("records")
     if not isinstance(records, list) or not records:
+        if debug:
+            LOGGER.debug(
+                "School holidays payload had no records for zone=%s date=%s",
+                zone,
+                target_date,
+            )
         return None
     fields = records[0].get("fields")
     if not isinstance(fields, dict):
