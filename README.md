@@ -88,6 +88,7 @@ Chronatrix builds the context from two sources:
 
 These variables are entered by the user and remain unchanged unless you update them.
 If a `custom_context` key has the same name as a computed key, it overrides it.
+String values from `custom_context` are returned in lowercase to match the rest of the context.
 
 ### Dynamic variables (computed by Chronatrix)
 
@@ -101,6 +102,7 @@ These values change automatically based on time and location.
 ## Available context keys
 
 Each key below is always present in the context returned by `build_context`.
+All string values returned in the context are normalized to lowercase (including values from `custom_context`).
 
 ### Date and time
 
@@ -124,6 +126,14 @@ Each key below is always present in the context returned by `build_context`.
   - Description: Current local month.
   - Possible values: `1` to `12`.
   - Example: `4`.
+- `current_quarter` (`str`)
+  - Description: Calendar quarter of the current month.
+  - Possible values: `"q1"`, `"q2"`, `"q3"`, `"q4"`.
+  - Example: `"q2"`.
+- `current_month_name` (`str`)
+  - Description: Month name in the configured locale.
+  - Possible values: any month name in lowercase.
+  - Example: `"april"`.
 - `current_year` (`int`)
   - Description: Current local year.
   - Possible values: any four-digit year.
@@ -132,29 +142,77 @@ Each key below is always present in the context returned by `build_context`.
   - Description: Current local weekday.
   - Possible values: `0` to `6`, where `0 = Monday` and `6 = Sunday`.
   - Example: `2`.
+- `week_day_name` (`str`)
+  - Description: Weekday name.
+  - Possible values: any weekday name in lowercase.
+  - Example: `"tuesday"`.
 - `is_weekend` (`bool`)
   - Description: Whether the current day is Saturday or Sunday.
   - Possible values: `true` or `false`.
   - Example: `false`.
+- `is_workday` (`bool`)
+  - Description: Whether the current day is Monday through Friday.
+  - Possible values: `true` or `false`.
+  - Example: `true`.
+- `is_business_hours` (`bool`)
+  - Description: Whether the time is within 09:00 to 16:59 on a workday.
+  - Possible values: `true` or `false`.
+  - Example: `false`.
+- `is_lunch_time` (`bool`)
+  - Description: Whether the time is within 12:00 to 13:59 on a workday.
+  - Possible values: `true` or `false`.
+  - Example: `true`.
+- `is_morning` (`bool`)
+  - Description: Whether the time is within 05:00 to 11:59.
+  - Possible values: `true` or `false`.
+  - Example: `true`.
+- `is_afternoon` (`bool`)
+  - Description: Whether the time is within 12:00 to 16:59.
+  - Possible values: `true` or `false`.
+  - Example: `false`.
+- `is_evening` (`bool`)
+  - Description: Whether the time is within 17:00 to 22:00.
+  - Possible values: `true` or `false`.
+  - Example: `true`.
+- `is_night` (`bool`)
+  - Description: Whether the time is within 23:00 to 04:59.
+  - Possible values: `true` or `false`.
+  - Example: `false`.
+- `is_leap_year` (`bool`)
+  - Description: Whether the current year is a leap year.
+  - Possible values: `true` or `false`.
+  - Example: `false`.
+- `is_last_week_of_month` (`bool`)
+  - Description: Whether the current date is in the last week of the month.
+  - Possible values: `true` or `false`.
+  - Example: `false`.
+- `days_until_end_of_month` (`int`)
+  - Description: Number of days remaining until the end of the current month.
+  - Possible values: `0` to `30` (depends on month length).
+  - Example: `12`.
+- `days_until_end_of_year` (`int`)
+  - Description: Number of days remaining until the end of the current year.
+  - Possible values: `0` to `365` (or `366` in leap years).
+  - Example: `256`.
 
 ### Location
 
 - `location_name` (`str`)
   - Description: Place name.
-  - Possible values: any string supplied in `Place.name`.
-  - Example: `"Paris"`.
+  - Possible values: any string supplied in `Place.name`, returned in lowercase.
+  - Example: `"paris"`.
 - `country_code` (`str`)
   - Description: ISO country code.
-  - Possible values: any string supplied in `Place.country_code`.
-  - Example: `"FR"`.
+  - Possible values: any string supplied in `Place.country_code`, returned in lowercase.
+  - Example: `"fr"`.
 - `country_name` (`str`)
   - Description: Country name.
-  - Possible values: any string supplied in `Place.country_name`.
-  - Example: `"France"`.
+  - Possible values: any string supplied in `Place.country_name`, returned in lowercase.
+  - Example: `"france"`.
 - `timezone` (`str`)
   - Description: IANA time zone identifier.
-  - Possible values: any valid IANA time zone (e.g., `Europe/Paris`).
-  - Example: `"Europe/Paris"`.
+  - Possible values: any valid IANA time zone (e.g., `Europe/Paris`), returned in lowercase.
+  - Example: `"europe/paris"`.
 - `latitude` (`float`)
   - Description: Latitude in decimal degrees.
   - Possible values: `-90.0` to `90.0`.
