@@ -1,0 +1,24 @@
+[project]
+name = "chronatrix"
+version = "0.1.0"
+description = "Moteur contextuel pour évaluer des conditions temporelles et environnementales."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "Chronatrix" }]
+dependencies = [
+  "astral>=3.2",
+]
+
+[project.scripts]
+chronatrix = "chronatrix.cli:main"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
