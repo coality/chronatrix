@@ -274,7 +274,11 @@ def fetch_market_quotation(isin: str) -> float | None:
     return None
 
 
-def build_context(place: Place, language: str = "en") -> dict[str, object]:
+def build_context(
+    place: Place,
+    language: str = "en",
+    custom_context: dict[str, object] | None = None,
+) -> dict[str, object]:
     tz = ZoneInfo(place.timezone)
     now = datetime.now(tz)
 
@@ -318,4 +322,6 @@ def build_context(place: Place, language: str = "en") -> dict[str, object]:
         "temperature": temperature,
         "market_quotation": market_quotation,
     }
+    if custom_context:
+        context |= custom_context
     return localize_context(context, language)
