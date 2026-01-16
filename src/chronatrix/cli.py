@@ -10,19 +10,19 @@ from chronatrix.core import Place, build_context, evaluate_condition
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Chronatrix: évalue des conditions temporelles et contextuelles "
-            "en fonction d'un lieu."))
-    parser.add_argument("condition", help="Expression Python à évaluer.")
-    parser.add_argument("--name", default="Paris", help="Nom du lieu.")
-    parser.add_argument("--country-code", default="FR", help="Code pays.")
-    parser.add_argument("--country-name", default="France", help="Nom du pays.")
-    parser.add_argument("--timezone", default="Europe/Paris", help="Fuseau horaire.")
+            "Chronatrix: evaluate temporal and contextual conditions "
+            "for a given place."))
+    parser.add_argument("condition", help="Python expression to evaluate.")
+    parser.add_argument("--name", default="Paris", help="Place name.")
+    parser.add_argument("--country-code", default="FR", help="Country code.")
+    parser.add_argument("--country-name", default="France", help="Country name.")
+    parser.add_argument("--timezone", default="Europe/Paris", help="Time zone.")
     parser.add_argument("--latitude", type=float, default=48.8566, help="Latitude.")
     parser.add_argument("--longitude", type=float, default=2.3522, help="Longitude.")
     parser.add_argument(
         "--show-context",
         action="store_true",
-        help="Affiche le contexte généré en JSON.",
+        help="Print the generated context as JSON.",
     )
     return parser
 

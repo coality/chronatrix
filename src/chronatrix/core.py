@@ -72,6 +72,7 @@ WEATHER_CODE_LABELS: dict[int, str] = {
 
 @dataclass(frozen=True)
 class Place:
+    """Represents a geographic location used to build the evaluation context."""
     name: str
     country_code: str
     country_name: str
@@ -81,15 +82,13 @@ class Place:
 
 
 def evaluate_condition(condition: str, context: dict[str, object]) -> bool:
-    """
-    Évalue une condition logique Python avec un contexte contrôlé.
-    """
+    """Evaluate a Python boolean expression against a constrained context."""
     try:
         tree = ast.parse(condition, mode="eval")
 
         for node in ast.walk(tree):
             if not isinstance(node, ALLOWED_AST_NODES):
-                raise ValueError("Expression non autorisée")
+                raise ValueError("Expression not allowed")
 
         return bool(eval(compile(tree, "<condition>", "eval"), {}, context))
     except Exception:
