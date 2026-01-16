@@ -5,7 +5,8 @@ import json
 from dataclasses import dataclass
 from datetime import date, datetime
 from urllib.error import URLError
-from urllib.request import urlopen
+from urllib.parse import quote_plus
+from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
 
 from astral import LocationInfo
@@ -18,6 +19,7 @@ ALLOWED_AST_NODES: tuple[type[ast.AST], ...] = (
     ast.Compare,
     ast.Name,
     ast.Load,
+    ast.Call,
     ast.And,
     ast.Or,
     ast.UnaryOp,
@@ -36,6 +38,8 @@ ALLOWED_AST_NODES: tuple[type[ast.AST], ...] = (
     ast.Div,
     ast.Mod,
 )
+
+ALLOWED_CALLS: set[str] = {"market_quotation"}
 
 
 WEATHER_CODE_LABELS: dict[int, str] = {
@@ -156,6 +160,19 @@ def evaluate_condition(condition: str, context: dict[str, object]) -> bool:
         for node in ast.walk(tree):
             if not isinstance(node, ALLOWED_AST_NODES):
                 raise ValueError("Expression not allowed")
+            if isinstance(node, ast.Call):
+                if not isinstance(node.func, ast.Name):
+                    raise ValueError("Expression not allowed")
+                if node.func.id not in ALLOWED_CALLS:
+                    raise ValueError("Expression not allowed")
+                if node.keywords:
+                    raise ValueError("Expression not allowed")
+                if (
+                    len(node.args) != 1
+                    or not isinstance(node.args[0], ast.Constant)
+                    or not isinstance(node.args[0].value, str)
+                ):
+                    raise ValueError("Expression not allowed")
 
         return bool(eval(compile(tree, "<condition>", "eval"), {}, context))
     except Exception:
@@ -207,6 +224,56 @@ def fetch_weather(latitude: float, longitude: float) -> tuple[str | None, float 
     return label, temp_value
 
 
+def fetch_market_symbol(isin: str) -> str | None:
+    url = "https://query2.finance.yahoo.com/v1/finance/search?q=" + quote_plus(isin)
+    request = Request(url, headers={"User-Agent": "chronatrix/1.0"})
+    try:
+        with urlopen(request, timeout=10) as response:
+            payload = json.load(response)
+    except (URLError, TimeoutError, json.JSONDecodeError):
+        return None
+
+    quotes = payload.get("quotes")
+    if not isinstance(quotes, list):
+        return None
+    for quote in quotes:
+        if not isinstance(quote, dict):
+            continue
+        symbol = quote.get("symbol")
+        if isinstance(symbol, str) and symbol:
+            return symbol
+    return None
+
+
+def fetch_market_quotation(isin: str) -> float | None:
+    if not isin:
+        return None
+    symbol = fetch_market_symbol(isin)
+    if not symbol:
+        return None
+    url = "https://query1.finance.yahoo.com/v7/finance/quote?symbols=" + quote_plus(symbol)
+    request = Request(url, headers={"User-Agent": "chronatrix/1.0"})
+    try:
+        with urlopen(request, timeout=10) as response:
+            payload = json.load(response)
+    except (URLError, TimeoutError, json.JSONDecodeError):
+        return None
+
+    quote_response = payload.get("quoteResponse")
+    if not isinstance(quote_response, dict):
+        return None
+    results = quote_response.get("result")
+    if not isinstance(results, list) or not results:
+        return None
+    quote = results[0]
+    if not isinstance(quote, dict):
+        return None
+    price = quote.get("regularMarketPrice")
+    if isinstance(price, (int, float)):
+        return float(price)
+    return None
+
+
 def build_context(place: Place, language: str = "en") -> dict[str, object]:
     tz = ZoneInfo(place.timezone)
     now = datetime.now(tz)
@@ -225,6 +292,9 @@ def build_context(place: Place, language: str = "en") -> dict[str, object]:
     is_daytime = sunrise <= now.time() <= sunset
 
     current_weather, temperature = fetch_weather(place.latitude, place.longitude)
+    def market_quotation(isin: str) -> float | None:
+        return fetch_market_quotation(isin)
+
     context = {
         "current_time": now.time(),
         "current_date": now.date(),
@@ -246,5 +316,6 @@ def build_context(place: Place, language: str = "en") -> dict[str, object]:
         "current_season": season_for(now.date(), place.latitude),
         "current_weather": current_weather or "unknown",
         "temperature": temperature,
+        "market_quotation": market_quotation,
     }
     return localize_context(context, language)

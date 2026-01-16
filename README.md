@@ -8,7 +8,7 @@ Chronatrix is a contextual engine that evaluates logical conditions in real time
 - Sunrise/sunset via `astral`.
 - Seasons computed from latitude (north/south hemisphere).
 - Current weather from Open-Meteo.
-- Controlled evaluation of simple Python expressions.
+- Controlled evaluation of simple Python expressions (including limited helper calls).
 - Ready-to-use CLI.
 
 ## Installation
@@ -94,6 +94,12 @@ context = build_context(place, language="fr")
 condition = "current_hour >= 18 and is_weekend"
 result = evaluate_condition(condition, context)
 print(result)
+```
+
+You can also query market data by ISIN inside conditions:
+
+```python
+condition = "current_hour >= 18 and is_weekend and market_quotation('FR0000130809')"
 ```
 
 ### Place fields
@@ -236,9 +242,17 @@ Each key below is always present in the context returned by `build_context`.
   - Description: Current air temperature from Open-Meteo (°C).
   - Possible values: any real number, or `null` if unavailable.
   - Example: `12.4`.
+
+### Market data
+
+- `market_quotation` (`Callable[[str], float | None]`)
+  - Description: Fetch the latest market price for a financial asset by ISIN.
+  - Possible values: call `market_quotation("<ISIN>")` inside a condition; returns a price or `null`.
+  - Example: `market_quotation("FR0000130809")`.
 ## Expression safety
 
-The evaluator limits the AST to logical operations, comparisons, and simple arithmetic. Any disallowed expression returns `false`.
+The evaluator limits the AST to logical operations, comparisons, simple arithmetic, and the
+`market_quotation("<ISIN>")` helper. Any disallowed expression returns `false`.
 
 ## Roadmap
 
