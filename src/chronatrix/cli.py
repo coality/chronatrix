@@ -23,7 +23,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--language",
         default="en",
         choices=sorted(LANGUAGE_OPTIONS),
-        help="Context language for textual values (en or fr).",
+        help="Context language for textual values (en).",
     )
     parser.add_argument(
         "--show-context",

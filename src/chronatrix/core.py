@@ -72,72 +72,13 @@ WEATHER_CODE_LABELS: dict[int, str] = {
     99: "thunderstorm_with_heavy_hail",
 }
 
-LANGUAGE_OPTIONS: set[str] = {"en", "fr"}
-
-SEASON_TRANSLATIONS: dict[str, dict[str, str]] = {
-    "fr": {
-        "winter": "hiver",
-        "spring": "printemps",
-        "summer": "été",
-        "autumn": "automne",
-    },
-    "en": {},
-}
-
-WEATHER_TRANSLATIONS: dict[str, dict[str, str]] = {
-    "fr": {
-        "clear": "ciel_dégagé",
-        "mainly_clear": "principalement_dégagé",
-        "partly_cloudy": "partiellement_nuageux",
-        "overcast": "couvert",
-        "fog": "brouillard",
-        "depositing_rime_fog": "brouillard_givrant",
-        "light_drizzle": "bruine_faible",
-        "moderate_drizzle": "bruine_modérée",
-        "dense_drizzle": "bruine_dense",
-        "light_freezing_drizzle": "bruine_givrante_faible",
-        "dense_freezing_drizzle": "bruine_givrante_dense",
-        "light_rain": "pluie_faible",
-        "moderate_rain": "pluie_modérée",
-        "heavy_rain": "forte_pluie",
-        "light_freezing_rain": "pluie_givrante_faible",
-        "heavy_freezing_rain": "forte_pluie_givrante",
-        "light_snow": "neige_faible",
-        "moderate_snow": "neige_modérée",
-        "heavy_snow": "forte_neige",
-        "snow_grains": "grains_de_neige",
-        "light_rain_showers": "averses_faibles",
-        "moderate_rain_showers": "averses_modérées",
-        "violent_rain_showers": "averses_violentes",
-        "light_snow_showers": "averses_de_neige_faibles",
-        "heavy_snow_showers": "averses_de_neige_fortes",
-        "thunderstorm": "orage",
-        "thunderstorm_with_light_hail": "orage_avec_grêle_faible",
-        "thunderstorm_with_heavy_hail": "orage_avec_forte_grêle",
-        "unknown": "inconnu",
-    },
-    "en": {},
-}
-
-
-def _translate_value(value: str, translations: dict[str, dict[str, str]], language: str) -> str:
-    if language == "en":
-        return value
-    return translations.get(language, {}).get(value, value)
+LANGUAGE_OPTIONS: set[str] = {"en"}
 
 
 def localize_context(context: dict[str, object], language: str) -> dict[str, object]:
     if language not in LANGUAGE_OPTIONS:
         raise ValueError(f"Unsupported language: {language}")
-
-    localized = dict(context)
-    season = context.get("current_season")
-    if isinstance(season, str):
-        localized["current_season"] = _translate_value(season, SEASON_TRANSLATIONS, language)
-    weather = context.get("current_weather")
-    if isinstance(weather, str):
-        localized["current_weather"] = _translate_value(weather, WEATHER_TRANSLATIONS, language)
-    return localized
+    return dict(context)
 
 
 @dataclass(frozen=True)
