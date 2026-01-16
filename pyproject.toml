@@ -1,7 +1,7 @@
 [project]
 name = "chronatrix"
 version = "0.1.0"
-description = "Moteur contextuel pour évaluer des conditions temporelles et environnementales."
+description = "Context engine for evaluating temporal and environmental conditions."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }

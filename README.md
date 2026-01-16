@@ -17,7 +17,7 @@ Chronatrix is a contextual engine that evaluates logical conditions in real time
 pip install chronatrix
 ```
 
-## Installation (depuis Git)
+## Installation (from Git)
 
 ```bash
 git clone https://github.com/coality/chronatrix.git
@@ -77,26 +77,26 @@ Each `Place` field is required and used to compute the context.
   - Possible values: `-180.0` to `180.0`.
   - Example: `2.3522`.
 
-## Variables statiques vs dynamiques
+## Static vs. dynamic variables
 
-Chronatrix construit le contexte à partir de deux sources :
+Chronatrix builds the context from two sources:
 
-### Variables statiques (fournies par l'utilisateur)
+### Static variables (provided by the user)
 
-- Champs `Place` (`name`, `country_code`, `country_name`, `timezone`, `latitude`, `longitude`).
-- `custom_context` passé à `build_context` (ex : `{"temperature": 12, "user_role": "admin"}`).
+- `Place` fields (`name`, `country_code`, `country_name`, `timezone`, `latitude`, `longitude`).
+- `custom_context` passed to `build_context` (e.g., `{"temperature": 12, "user_role": "admin"}`).
 
-Ces variables sont saisies par l'utilisateur et restent inchangées tant que vous ne les modifiez pas.
-Si une clé de `custom_context` a le même nom qu'une clé calculée, elle la remplace.
+These variables are entered by the user and remain unchanged unless you update them.
+If a `custom_context` key has the same name as a computed key, it overrides it.
 
-### Variables dynamiques (calculées par Chronatrix)
+### Dynamic variables (computed by Chronatrix)
 
-- Date/heure locale (`current_time`, `current_date`, `current_datetime`, `current_hour`, etc.).
-- Indicateurs calendaires (`is_weekend`, `current_season`).
-- Données solaires (`sunrise_time`, `sunset_time`, `is_daytime`).
-- Météo (`current_weather`, `temperature`) via Open-Meteo.
+- Local date/time (`current_time`, `current_date`, `current_datetime`, `current_hour`, etc.).
+- Calendar indicators (`is_weekend`, `current_season`).
+- Solar data (`sunrise_time`, `sunset_time`, `is_daytime`).
+- Weather (`current_weather`, `temperature`) via Open-Meteo.
 
-Ces valeurs changent automatiquement en fonction de l'heure et de la localisation.
+These values change automatically based on time and location.
 
 ## Available context keys
 
@@ -212,22 +212,22 @@ Any disallowed expression returns `false`.
 - Support public holidays per country.
 - Add place presets.
 
-## Publication sur PyPI
+## Publishing to PyPI
 
-1. Mettre à jour la version dans `pyproject.toml`.
-2. Construire les distributions :
+1. Update the version in `pyproject.toml`.
+2. Build the distributions:
 
    ```bash
    python -m build
    ```
 
-3. Vérifier les artefacts :
+3. Verify the artifacts:
 
    ```bash
    python -m twine check dist/*
    ```
 
-4. Publier :
+4. Publish:
 
    ```bash
    python -m twine upload dist/*

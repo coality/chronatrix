@@ -24,6 +24,8 @@ ALLOWED_AST_NODES: tuple[type[ast.AST], ...] = (
     ast.Or,
     ast.UnaryOp,
     ast.Not,
+    ast.UAdd,
+    ast.USub,
     ast.Constant,
     ast.Gt,
     ast.GtE,
