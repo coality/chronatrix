@@ -4,11 +4,13 @@ Chronatrix is a contextual engine that evaluates logical conditions in real time
 
 ## Features
 
+
 - Time context aligned with the geographic area.
 - Sunrise/sunset via `astral`.
 - Seasons computed from latitude (north/south hemisphere).
 - Controlled evaluation of simple Python expressions.
 - Ready-to-use CLI.
+
 
 ## Installation
 
@@ -52,6 +54,7 @@ condition = "current_hour >= 18 and is_weekend"
 result = evaluate_condition(condition, context)
 print(result)
 ```
+
 
 ## Available context keys
 
@@ -119,3 +122,21 @@ The evaluator limits the AST to logical operations/comparisons and simple arithm
 - Connect to a weather API.
 - Support public holidays per country.
 - Add place presets.
+=======
+## Clés de contexte disponibles
+
+- `current_time`, `current_date`, `current_datetime`
+- `current_hour`, `current_month`, `current_year`, `current_weekday`, `is_weekend`
+- `location_name`, `country_code`, `country_name`, `timezone`, `latitude`, `longitude`
+- `sunrise_time`, `sunset_time`, `is_daytime`, `current_season`
+- `current_weather`, `temperature` (via Open-Meteo)
+
+## Sécurité des expressions
+
+L'évaluation limite l'AST aux opérations logiques/comparaisons et à l'arithmétique simple. Toute expression non autorisée retourne `false`.
+
+## Roadmap
+
+- Ajustement des descripteurs météo.
+- Support des jours fériés par pays.
+- Ajout de presets de lieux.

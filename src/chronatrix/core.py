@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import ast
+import json
 from dataclasses import dataclass
 from datetime import date, datetime
+from urllib.error import URLError
+from urllib.request import urlopen
 from zoneinfo import ZoneInfo
 
 from astral import LocationInfo
@@ -33,6 +36,38 @@ ALLOWED_AST_NODES: tuple[type[ast.AST], ...] = (
     ast.Div,
     ast.Mod,
 )
+
+
+WEATHER_CODE_LABELS: dict[int, str] = {
+    0: "clear",
+    1: "mainly_clear",
+    2: "partly_cloudy",
+    3: "overcast",
+    45: "fog",
+    48: "depositing_rime_fog",
+    51: "light_drizzle",
+    53: "moderate_drizzle",
+    55: "dense_drizzle",
+    56: "light_freezing_drizzle",
+    57: "dense_freezing_drizzle",
+    61: "light_rain",
+    63: "moderate_rain",
+    65: "heavy_rain",
+    66: "light_freezing_rain",
+    67: "heavy_freezing_rain",
+    71: "light_snow",
+    73: "moderate_snow",
+    75: "heavy_snow",
+    77: "snow_grains",
+    80: "light_rain_showers",
+    81: "moderate_rain_showers",
+    82: "violent_rain_showers",
+    85: "light_snow_showers",
+    86: "heavy_snow_showers",
+    95: "thunderstorm",
+    96: "thunderstorm_with_light_hail",
+    99: "thunderstorm_with_heavy_hail",
+}
 
 
 @dataclass(frozen=True)
@@ -82,6 +117,30 @@ def season_for(target_date: date, latitude: float) -> str:
     }[season]
 
 
+def fetch_weather(latitude: float, longitude: float) -> tuple[str | None, float | None]:
+    url = (
+        "https://api.open-meteo.com/v1/forecast?"
+        f"latitude={latitude}&longitude={longitude}&current_weather=true"
+    )
+    try:
+        with urlopen(url, timeout=10) as response:
+            payload = json.load(response)
+    except (URLError, TimeoutError, json.JSONDecodeError):
+        return None, None
+
+    current = payload.get("current_weather")
+    if not isinstance(current, dict):
+        return None, None
+
+    weather_code = current.get("weathercode")
+    temperature = current.get("temperature")
+    label = None
+    if isinstance(weather_code, int):
+        label = WEATHER_CODE_LABELS.get(weather_code, "unknown")
+    temp_value = temperature if isinstance(temperature, (int, float)) else None
+    return label, temp_value
+
+
 def build_context(place: Place) -> dict[str, object]:
     tz = ZoneInfo(place.timezone)
     now = datetime.now(tz)
@@ -98,6 +157,8 @@ def build_context(place: Place) -> dict[str, object]:
     sunrise = solar["sunrise"].time()
     sunset = solar["sunset"].time()
     is_daytime = sunrise <= now.time() <= sunset
+
+    current_weather, temperature = fetch_weather(place.latitude, place.longitude)
 
     return {
         "current_time": now.time(),
@@ -118,6 +179,6 @@ def build_context(place: Place) -> dict[str, object]:
         "sunset_time": sunset,
         "is_daytime": is_daytime,
         "current_season": season_for(now.date(), place.latitude),
-        "current_weather": "unknown",
-        "temperature": None,
+        "current_weather": current_weather or "unknown",
+        "temperature": temperature,
     }
