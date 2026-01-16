@@ -2,11 +2,9 @@ from __future__ import annotations
 
 import ast
 import json
-import os
 from dataclasses import dataclass
 from datetime import date, datetime
 from urllib.error import URLError
-from urllib.parse import urlencode
 from urllib.request import urlopen
 from zoneinfo import ZoneInfo
 
@@ -40,7 +38,7 @@ ALLOWED_AST_NODES: tuple[type[ast.AST], ...] = (
     ast.Mod,
 )
 
-ALLOWED_CALLS: set[str] = {"market_quotation"}
+ALLOWED_CALLS: set[str] = set()
 
 
 WEATHER_CODE_LABELS: dict[int, str] = {
@@ -120,8 +118,6 @@ WEATHER_TRANSLATIONS: dict[str, dict[str, str]] = {
     },
     "en": {},
 }
-
-MARKET_DATA_API_URL = "https://api.twelvedata.com/quote"
 
 
 def _translate_value(value: str, translations: dict[str, dict[str, str]], language: str) -> str:
@@ -227,35 +223,6 @@ def fetch_weather(latitude: float, longitude: float) -> tuple[str | None, float 
     return label, temp_value
 
 
-def fetch_market_quotation(isin: str) -> float | None:
-    if not isin:
-        return None
-    api_key = os.getenv("TWELVEDATA_API_KEY")
-    if not api_key:
-        return None
-    query = urlencode({"isin": isin, "apikey": api_key})
-    url = f"{MARKET_DATA_API_URL}?{query}"
-    try:
-        with urlopen(url, timeout=10) as response:
-            payload = json.load(response)
-    except (URLError, TimeoutError, json.JSONDecodeError):
-        return None
-
-    if not isinstance(payload, dict):
-        return None
-    if payload.get("status") == "error":
-        return None
-    price = payload.get("price")
-    if isinstance(price, (int, float)):
-        return float(price)
-    if isinstance(price, str):
-        try:
-            return float(price)
-        except ValueError:
-            return None
-    return None
-
-
 def build_context(
     place: Place,
     language: str = "en",
@@ -278,9 +245,6 @@ def build_context(
     is_daytime = sunrise <= now.time() <= sunset
 
     current_weather, temperature = fetch_weather(place.latitude, place.longitude)
-    def market_quotation(isin: str) -> float | None:
-        return fetch_market_quotation(isin)
-
     context = {
         "current_time": now.time(),
         "current_date": now.date(),
@@ -302,7 +266,6 @@ def build_context(
         "current_season": season_for(now.date(), place.latitude),
         "current_weather": current_weather or "unknown",
         "temperature": temperature,
-        "market_quotation": market_quotation,
     }
     if custom_context:
         context |= custom_context

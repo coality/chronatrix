@@ -96,15 +96,6 @@ result = evaluate_condition(condition, context)
 print(result)
 ```
 
-You can also query market data by ISIN inside conditions:
-
-```python
-condition = "current_hour >= 18 and is_weekend and market_quotation('FR0000130809')"
-```
-
-The market quotation helper uses the Twelve Data API and requires setting a
-`TWELVEDATA_API_KEY` environment variable to return a price.
-
 ### Place fields
 
 Each `Place` field is required and used to compute the context.
@@ -246,18 +237,10 @@ Each key below is always present in the context returned by `build_context`.
   - Possible values: any real number, or `null` if unavailable.
   - Example: `12.4`.
 
-### Market data
-
-- `market_quotation` (`Callable[[str], float | None]`)
-  - Description: Fetch the latest market price for a financial asset by ISIN.
-  - Possible values: call `market_quotation("<ISIN>")` inside a condition; returns a price or `null`.
-  - Example: `market_quotation("FR0000130809")`.
-  - Requires: `TWELVEDATA_API_KEY` environment variable for the Twelve Data API.
-
 ## Expression safety
 
-The evaluator limits the AST to logical operations, comparisons, simple arithmetic, and the
-`market_quotation("<ISIN>")` helper. Any disallowed expression returns `false`.
+The evaluator limits the AST to logical operations, comparisons, and simple arithmetic.
+Any disallowed expression returns `false`.
 
 ## Roadmap
 
