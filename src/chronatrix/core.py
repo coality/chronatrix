@@ -120,6 +120,15 @@ WEATHER_TRANSLATIONS: dict[str, dict[str, str]] = {
     "en": {},
 }
 
+YAHOO_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/120.0.0.0 Safari/537.36"
+    ),
+    "Accept": "application/json",
+}
+
 
 def _translate_value(value: str, translations: dict[str, dict[str, str]], language: str) -> str:
     if language == "en":
@@ -226,7 +235,7 @@ def fetch_weather(latitude: float, longitude: float) -> tuple[str | None, float 
 
 def fetch_market_symbol(isin: str) -> str | None:
     url = "https://query2.finance.yahoo.com/v1/finance/search?q=" + quote_plus(isin)
-    request = Request(url, headers={"User-Agent": "chronatrix/1.0"})
+    request = Request(url, headers=YAHOO_HEADERS)
     try:
         with urlopen(request, timeout=10) as response:
             payload = json.load(response)
@@ -252,7 +261,7 @@ def fetch_market_quotation(isin: str) -> float | None:
     if not symbol:
         return None
     url = "https://query1.finance.yahoo.com/v7/finance/quote?symbols=" + quote_plus(symbol)
-    request = Request(url, headers={"User-Agent": "chronatrix/1.0"})
+    request = Request(url, headers=YAHOO_HEADERS)
     try:
         with urlopen(request, timeout=10) as response:
             payload = json.load(response)
