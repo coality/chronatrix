@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import argparse
 import json
-from dataclasses import asdict
 
-from chronatrix.core import Place, build_context, evaluate_condition
+from chronatrix.core import Place, build_context, evaluate_condition, format_context
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -63,7 +62,7 @@ def main() -> int:
     print("true" if result else "false")
 
     if args.show_context:
-        print(json.dumps(asdict(place) | context, default=str, indent=2))
+        print(format_context(context, place=place))
 
     return 0
 

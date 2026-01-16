@@ -73,7 +73,7 @@ Each argument supports a default and has an expected type. Examples show typical
 ## Usage (Python)
 
 ```python
-from chronatrix import Place, build_context, evaluate_condition
+from chronatrix import Place, build_context, evaluate_condition, print_context
 
 place = Place(
     name="Paris",
@@ -88,6 +88,7 @@ context = build_context(place)
 condition = "current_hour >= 18 and is_weekend"
 result = evaluate_condition(condition, context)
 print(result)
+print_context(context, place=place)
 ```
 
 ### Place fields
