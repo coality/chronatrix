@@ -6,6 +6,7 @@ import json
 from dataclasses import asdict, dataclass
 from datetime import date, datetime, timedelta
 from urllib.error import URLError
+from urllib.parse import urlencode
 from urllib.request import urlopen
 from zoneinfo import ZoneInfo
 
@@ -93,55 +94,62 @@ class SchoolHolidayPeriod:
     end: date
 
 
-FRENCH_SCHOOL_HOLIDAYS: dict[str, tuple[SchoolHolidayPeriod, ...]] = {
-    "A": (
-        SchoolHolidayPeriod("autumn_break", date(2023, 10, 21), date(2023, 11, 6)),
-        SchoolHolidayPeriod("christmas_holidays", date(2023, 12, 23), date(2024, 1, 8)),
-        SchoolHolidayPeriod("winter_break", date(2024, 2, 17), date(2024, 3, 4)),
-        SchoolHolidayPeriod("spring_break", date(2024, 4, 13), date(2024, 4, 29)),
-        SchoolHolidayPeriod("summer_holidays", date(2024, 7, 6), date(2024, 9, 2)),
-        SchoolHolidayPeriod("autumn_break", date(2024, 10, 19), date(2024, 11, 4)),
-        SchoolHolidayPeriod("christmas_holidays", date(2024, 12, 21), date(2025, 1, 6)),
-        SchoolHolidayPeriod("winter_break", date(2025, 2, 22), date(2025, 3, 10)),
-        SchoolHolidayPeriod("spring_break", date(2025, 4, 19), date(2025, 5, 5)),
-        SchoolHolidayPeriod("summer_holidays", date(2025, 7, 5), date(2025, 9, 1)),
-    ),
-    "B": (
-        SchoolHolidayPeriod("autumn_break", date(2023, 10, 21), date(2023, 11, 6)),
-        SchoolHolidayPeriod("christmas_holidays", date(2023, 12, 23), date(2024, 1, 8)),
-        SchoolHolidayPeriod("winter_break", date(2024, 2, 24), date(2024, 3, 11)),
-        SchoolHolidayPeriod("spring_break", date(2024, 4, 20), date(2024, 5, 6)),
-        SchoolHolidayPeriod("summer_holidays", date(2024, 7, 6), date(2024, 9, 2)),
-        SchoolHolidayPeriod("autumn_break", date(2024, 10, 19), date(2024, 11, 4)),
-        SchoolHolidayPeriod("christmas_holidays", date(2024, 12, 21), date(2025, 1, 6)),
-        SchoolHolidayPeriod("winter_break", date(2025, 2, 15), date(2025, 3, 3)),
-        SchoolHolidayPeriod("spring_break", date(2025, 4, 12), date(2025, 4, 28)),
-        SchoolHolidayPeriod("summer_holidays", date(2025, 7, 5), date(2025, 9, 1)),
-    ),
-    "C": (
-        SchoolHolidayPeriod("autumn_break", date(2023, 10, 21), date(2023, 11, 6)),
-        SchoolHolidayPeriod("christmas_holidays", date(2023, 12, 23), date(2024, 1, 8)),
-        SchoolHolidayPeriod("winter_break", date(2024, 2, 10), date(2024, 2, 26)),
-        SchoolHolidayPeriod("spring_break", date(2024, 4, 6), date(2024, 4, 22)),
-        SchoolHolidayPeriod("summer_holidays", date(2024, 7, 6), date(2024, 9, 2)),
-        SchoolHolidayPeriod("autumn_break", date(2024, 10, 19), date(2024, 11, 4)),
-        SchoolHolidayPeriod("christmas_holidays", date(2024, 12, 21), date(2025, 1, 6)),
-        SchoolHolidayPeriod("winter_break", date(2025, 2, 8), date(2025, 2, 24)),
-        SchoolHolidayPeriod("spring_break", date(2025, 4, 5), date(2025, 4, 21)),
-        SchoolHolidayPeriod("summer_holidays", date(2025, 7, 5), date(2025, 9, 1)),
-    ),
-}
+def _parse_api_date(value: object) -> date | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).date()
+    except ValueError:
+        return None
+
+
+def fetch_school_holiday_period(
+    target_date: date,
+    zone: str | None,
+) -> SchoolHolidayPeriod | None:
+    if zone is None:
+        return None
+    query = urlencode(
+        {
+            "dataset": "fr-en-calendrier-scolaire",
+            "rows": 1,
+            "sort": "-start_date",
+            "refine.zones": zone.upper(),
+            "where": (
+                f"start_date <= '{target_date.isoformat()}' "
+                f"AND end_date >= '{target_date.isoformat()}'"
+            ),
+        },
+    )
+    url = f"https://data.education.gouv.fr/api/records/1.0/search/?{query}"
+    try:
+        with urlopen(url, timeout=10) as response:
+            payload = json.load(response)
+    except (URLError, TimeoutError, json.JSONDecodeError):
+        return None
+
+    records = payload.get("records")
+    if not isinstance(records, list) or not records:
+        return None
+    fields = records[0].get("fields")
+    if not isinstance(fields, dict):
+        return None
+    name = fields.get("description") or fields.get("nom") or fields.get("name")
+    if not isinstance(name, str):
+        return None
+    start = _parse_api_date(fields.get("start_date"))
+    end = _parse_api_date(fields.get("end_date"))
+    if start is None or end is None:
+        return None
+    return SchoolHolidayPeriod(name=name, start=start, end=end)
 
 
 def school_holiday_for(target_date: date, zone: str | None) -> str | None:
-    if zone is None:
+    period = fetch_school_holiday_period(target_date, zone)
+    if period is None:
         return None
-    periods = FRENCH_SCHOOL_HOLIDAYS.get(zone.upper())
-    if not periods:
-        return None
-    for period in periods:
-        if period.start <= target_date <= period.end:
-            return period.name
+    if period.start <= target_date <= period.end:
+        return period.name
     return None
 
 
