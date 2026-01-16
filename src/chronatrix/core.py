@@ -140,10 +140,12 @@ def _normalize_school_zone(zone: str) -> str:
     return cleaned.upper()
 
 
-def _load_school_holiday_provider() -> object | None:
+def _load_school_holiday_provider(debug: bool = False) -> object | None:
     try:
         import vacances_scolaires_france as vacances_module
     except ImportError:
+        if debug:
+            LOGGER.debug("vacances_scolaires_france not installed")
         return None
 
     for class_name in (
@@ -155,9 +157,17 @@ def _load_school_holiday_provider() -> object | None:
         if provider_class is None:
             continue
         try:
-            return provider_class()
+            provider = provider_class()
+            if debug:
+                LOGGER.debug(
+                    "Using vacances_scolaires_france provider class %s",
+                    class_name,
+                )
+            return provider
         except Exception:
             continue
+    if debug:
+        LOGGER.debug("Using vacances_scolaires_france module fallback")
     return vacances_module
 
 
@@ -278,7 +288,19 @@ def _fetch_school_holiday_records(
                     )
                 continue
             if records:
+                if debug:
+                    LOGGER.debug(
+                        "Loaded %s vacances_scolaires_france records via %s",
+                        len(records),
+                        method_name,
+                    )
                 return records
+    if debug:
+        LOGGER.debug(
+            "No vacances_scolaires_france records found for zone %s in %s",
+            zone_code,
+            year,
+        )
     return []
 
 
@@ -290,7 +312,7 @@ def fetch_school_holiday_period(
     if zone is None:
         return None
     zone_code = _normalize_school_zone(zone)
-    provider = _load_school_holiday_provider()
+    provider = _load_school_holiday_provider(debug=debug)
     if provider is None:
         if debug:
             LOGGER.debug("vacances_scolaires_france provider not available")
@@ -324,6 +346,11 @@ def fetch_school_holiday_period(
                     continue
                 normalized = _normalize_holiday_record(result)
                 if normalized is not None:
+                    if debug:
+                        LOGGER.debug(
+                            "Matched vacances_scolaires_france holiday via %s",
+                            method_name,
+                        )
                     return SchoolHolidayPeriod(
                         name=normalized["name"],
                         start=normalized["start"],
@@ -371,7 +398,7 @@ def fetch_school_holidays(
     if zone is None:
         return []
     zone_code = _normalize_school_zone(zone)
-    provider = _load_school_holiday_provider()
+    provider = _load_school_holiday_provider(debug=debug)
     if provider is None:
         if debug:
             LOGGER.debug("vacances_scolaires_france provider not available")
