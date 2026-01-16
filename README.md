@@ -7,6 +7,7 @@ Chronatrix est un moteur contextuel qui évalue des conditions logiques en temps
 - Contexte temporel aligné sur la zone géographique.
 - Lever/coucher du soleil via `astral`.
 - Saisons calculées selon la latitude (hémisphère nord/sud).
+- Météo actuelle via l'API gratuite Open-Meteo.
 - Évaluation contrôlée d'expressions Python simples.
 - CLI prête à l'emploi.
 
@@ -59,7 +60,7 @@ print(result)
 - `current_hour`, `current_month`, `current_year`, `current_weekday`, `is_weekend`
 - `location_name`, `country_code`, `country_name`, `timezone`, `latitude`, `longitude`
 - `sunrise_time`, `sunset_time`, `is_daytime`, `current_season`
-- `current_weather`, `temperature` (placeholders)
+- `current_weather`, `temperature` (via Open-Meteo)
 
 ## Sécurité des expressions
 
@@ -67,6 +68,6 @@ L'évaluation limite l'AST aux opérations logiques/comparaisons et à l'arithm�
 
 ## Roadmap
 
-- Connexion à une API météo.
+- Ajustement des descripteurs météo.
 - Support des jours fériés par pays.
 - Ajout de presets de lieux.
