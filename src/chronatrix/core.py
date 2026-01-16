@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import ast
 import json
+import os
 from dataclasses import dataclass
 from datetime import date, datetime
 from urllib.error import URLError
-from urllib.parse import quote_plus
-from urllib.request import Request, urlopen
+from urllib.parse import urlencode
+from urllib.request import urlopen
 from zoneinfo import ZoneInfo
 
 from astral import LocationInfo
@@ -120,14 +121,7 @@ WEATHER_TRANSLATIONS: dict[str, dict[str, str]] = {
     "en": {},
 }
 
-YAHOO_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
-    ),
-    "Accept": "application/json",
-}
+MARKET_DATA_API_URL = "https://api.twelvedata.com/quote"
 
 
 def _translate_value(value: str, translations: dict[str, dict[str, str]], language: str) -> str:
@@ -233,53 +227,32 @@ def fetch_weather(latitude: float, longitude: float) -> tuple[str | None, float 
     return label, temp_value
 
 
-def fetch_market_symbol(isin: str) -> str | None:
-    url = "https://query2.finance.yahoo.com/v1/finance/search?q=" + quote_plus(isin)
-    request = Request(url, headers=YAHOO_HEADERS)
-    try:
-        with urlopen(request, timeout=10) as response:
-            payload = json.load(response)
-    except (URLError, TimeoutError, json.JSONDecodeError):
-        return None
-
-    quotes = payload.get("quotes")
-    if not isinstance(quotes, list):
-        return None
-    for quote in quotes:
-        if not isinstance(quote, dict):
-            continue
-        symbol = quote.get("symbol")
-        if isinstance(symbol, str) and symbol:
-            return symbol
-    return None
-
-
 def fetch_market_quotation(isin: str) -> float | None:
     if not isin:
         return None
-    symbol = fetch_market_symbol(isin)
-    if not symbol:
+    api_key = os.getenv("TWELVEDATA_API_KEY")
+    if not api_key:
         return None
-    url = "https://query1.finance.yahoo.com/v7/finance/quote?symbols=" + quote_plus(symbol)
-    request = Request(url, headers=YAHOO_HEADERS)
+    query = urlencode({"isin": isin, "apikey": api_key})
+    url = f"{MARKET_DATA_API_URL}?{query}"
     try:
-        with urlopen(request, timeout=10) as response:
+        with urlopen(url, timeout=10) as response:
             payload = json.load(response)
     except (URLError, TimeoutError, json.JSONDecodeError):
         return None
 
-    quote_response = payload.get("quoteResponse")
-    if not isinstance(quote_response, dict):
+    if not isinstance(payload, dict):
         return None
-    results = quote_response.get("result")
-    if not isinstance(results, list) or not results:
+    if payload.get("status") == "error":
         return None
-    quote = results[0]
-    if not isinstance(quote, dict):
-        return None
-    price = quote.get("regularMarketPrice")
+    price = payload.get("price")
     if isinstance(price, (int, float)):
         return float(price)
+    if isinstance(price, str):
+        try:
+            return float(price)
+        except ValueError:
+            return None
     return None
 
 
