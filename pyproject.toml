@@ -25,6 +25,9 @@ dependencies = [
   "vacances-scolaires-france>=0.1.0",
 ]
 
+[project.optional-dependencies]
+test = ["pytest>=7.0"]
+
 [project.urls]
 Homepage = "https://github.com/coality/chronatrix"
 Repository = "https://github.com/coality/chronatrix"
