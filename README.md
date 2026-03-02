@@ -323,6 +323,132 @@ All string values returned in the context are normalized to lowercase (including
   - Possible values: any real number, or `null` if unavailable.
   - Example: `12.4`.
 
+## Exhaustive Chronatrix expression examples
+
+Below is a practical and *syntax-exhaustive* list of expression patterns accepted by `evaluate_condition`.
+
+### 1) Simple boolean flags
+
+```python
+"is_weekend"
+"is_workday"
+"is_business_hours"
+"is_lunch_time"
+"is_daytime"
+"is_bank_holiday"
+"is_school_holiday"
+"is_morning"
+"is_afternoon"
+"is_evening"
+"is_night"
+"is_leap_year"
+"is_last_week_of_month"
+```
+
+### 2) Unary operators (`not`, unary `+`, unary `-`)
+
+```python
+"not is_weekend"
+"not is_daytime"
+"+current_hour >= 9"
+"-days_until_end_of_month <= 0"
+```
+
+### 3) Numeric comparisons (all supported comparison operators)
+
+```python
+"current_hour == 9"
+"current_hour != 9"
+"current_hour > 9"
+"current_hour >= 9"
+"current_hour < 18"
+"current_hour <= 18"
+
+"temperature is not None and temperature >= 20"
+"days_until_end_of_month <= 7"
+"days_until_end_of_year < 30"
+"current_weekday >= 0 and current_weekday <= 6"
+"latitude > 0"
+"longitude < 0"
+```
+
+### 4) String comparisons
+
+```python
+"current_season == 'summer'"
+"current_season != 'winter'"
+"current_weather == 'clear'"
+"current_weather != 'unknown'"
+"country_code == 'fr'"
+"timezone == 'europe/paris'"
+"current_quarter == 'q1'"
+"current_month_name == 'january'"
+"week_day_name == 'monday'"
+"current_bank_holiday_name == 'bastille_day'"
+"current_school_holiday_name == 'vacances_d_hiver'"
+```
+
+### 5) Boolean composition with `and` / `or`
+
+```python
+"is_workday and is_business_hours"
+"is_weekend or is_bank_holiday"
+"is_daytime and current_weather == 'clear'"
+"is_school_holiday and not is_weekend"
+"(is_workday and is_business_hours) or is_bank_holiday"
+```
+
+### 6) Arithmetic expressions (`+`, `-`, `*`, `/`, `%`)
+
+```python
+"(current_hour + 1) >= 18"
+"(current_hour - 2) < 12"
+"(current_month * 3) >= 6"
+"(days_until_end_of_month / 2) <= 5"
+"current_month % 2 == 0"
+"(current_hour + current_month) > 20"
+```
+
+### 7) Mixed real-world expressions
+
+```python
+"is_workday and current_hour >= 9 and current_hour < 17"
+"is_lunch_time and temperature is not None and temperature >= 18"
+"is_evening and (current_weather == 'light_rain' or current_weather == 'moderate_rain')"
+"not is_daytime and not is_weekend"
+"country_code == 'fr' and (is_bank_holiday or is_school_holiday)"
+"current_season == 'winter' and temperature is not None and temperature <= 5"
+"days_until_end_of_year <= 14 and is_workday"
+"is_last_week_of_month and is_business_hours"
+```
+
+### 8) `None` checks for nullable values
+
+```python
+"temperature is None"
+"temperature is not None"
+"current_bank_holiday_name is None"
+"current_bank_holiday_name is not None"
+"current_school_holiday_name is None"
+"current_school_holiday_name is not None"
+```
+
+### 9) Unsupported patterns (return `False`)
+
+These patterns are intentionally blocked by the safe evaluator:
+
+```python
+"current_weather in ['clear', 'partly_cloudy']"      # `in` not allowed
+"len(current_weather) > 0"                            # function calls not allowed
+"current_weather.startswith('clear')"                 # attribute calls not allowed
+"a if is_daytime else b"                              # conditional expressions not allowed
+"{\"x\": 1}"                                         # dict/list/set literals not allowed
+```
+
+> Notes:
+> - Context strings are normalized to lowercase, so compare with lowercase values.
+> - If an expression uses unsupported syntax (or raises an error), `evaluate_condition` returns `False`.
+
 ## Expression safety
 
 The evaluator limits the AST to logical operations, comparisons, and simple arithmetic.
