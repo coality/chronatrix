@@ -23,10 +23,14 @@ classifiers = [
 dependencies = [
   "astral>=3.2",
   "vacances-scolaires-france>=0.1.0",
+  "fastapi>=0.111.0",
+  "uvicorn>=0.30.0",
+  "pymysql>=1.1.1",
+  "httpx>=0.27.0",
 ]
 
 [project.optional-dependencies]
-test = ["pytest>=7.0"]
+test = ["pytest>=7.0", "pytest-asyncio>=0.23.0"]
 
 [project.urls]
 Homepage = "https://github.com/coality/chronatrix"

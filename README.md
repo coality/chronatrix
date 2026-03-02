@@ -480,3 +480,61 @@ Any disallowed expression returns `false`.
    ```bash
    python -m twine upload dist/*
    ```
+
+## API
+
+Chronatrix includes an HTTP API powered by FastAPI.
+
+### Run
+
+```bash
+export CHRONATRIX_DB_DSN='mysql://user:pass@127.0.0.1:3306/chronatrix'
+export CHRONATRIX_KEY_SECRET='replace-with-a-long-random-secret'
+uvicorn chronatrix.api.main:app --host 0.0.0.0 --port 8000
+```
+
+### Endpoint
+
+`GET /v1/context`
+
+Query parameters:
+- `tz` (required): IANA timezone (`Europe/Paris`)
+- `lat`, `lon` (optional): coordinates for precise astral/weather
+- `country` (optional): ISO country code for public holidays (`FR`)
+- `at` (optional): ISO8601 datetime
+
+Header:
+- `X-API-Key` (required)
+
+Example:
+
+```bash
+curl -s 'http://127.0.0.1:8000/v1/context?tz=Europe/Paris&lat=48.85&lon=2.35&country=FR' \
+  -H 'X-API-Key: ctx_xxxxx'
+```
+
+The response is a stable nested JSON structure with `meta`, `time`, `business`, `astro`, `calendar`, `weather`, and `warnings`.
+
+External providers are best-effort: failures return `null` fields + warning markers, without dropping the API call.
+
+## API Keys
+
+Manage API keys from server-side CLI:
+
+```bash
+python tools/chronatrix_keys.py create --label 'production' --rate 60
+python tools/chronatrix_keys.py list --status active --limit 50
+python tools/chronatrix_keys.py revoke --prefix ctx_abcd1234
+```
+
+Notes:
+- Keys are shown only once on creation.
+- DB stores only HMAC-SHA256 hash (`key_hash`) and prefix, never plaintext key.
+
+## SQL migrations
+
+Apply `db/migrations/001_api_tables.sql` to create:
+- `api_keys`
+- `api_cache`
+
+`api_cache` is used as MariaDB L2 cache, with in-memory L1 cache in API runtime.
