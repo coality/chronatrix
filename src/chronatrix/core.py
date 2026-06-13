@@ -38,6 +38,8 @@ ALLOWED_AST_NODES: tuple[type[ast.AST], ...] = (
     ast.LtE,
     ast.Eq,
     ast.NotEq,
+    ast.Is,
+    ast.IsNot,
     ast.BinOp,
     ast.Add,
     ast.Sub,
@@ -253,7 +255,7 @@ def evaluate_condition(condition: str, context: dict[str, object]) -> bool:
                 ):
                     raise ValueError("Expression not allowed")
 
-        return bool(eval(compile(tree, "<condition>", "eval"), {}, context))
+        return bool(eval(compile(tree, "<condition>", "eval"), {"__builtins__": {}}, context))
     except Exception:
         return False
 
@@ -323,6 +325,7 @@ def build_context(
     custom_context: dict[str, object] | None = None,
     reference_datetime: datetime | None = None,
     debug: bool = False,
+    fetch_external: bool = True,
 ) -> dict[str, object]:
     tz = ZoneInfo(place.timezone)
     if reference_datetime is None:
@@ -340,16 +343,27 @@ def build_context(
         longitude=place.longitude,
     )
 
-    solar = sun(loc.observer, date=now.date(), tzinfo=tz)
-    sunrise = solar["sunrise"].time()
-    sunset = solar["sunset"].time()
-    is_daytime = sunrise <= now.time() <= sunset
+    try:
+        solar = sun(loc.observer, date=now.date(), tzinfo=tz)
+        sunrise = solar["sunrise"].time()
+        sunset = solar["sunset"].time()
+        is_daytime = sunrise <= now.time() <= sunset
+    except Exception:
+        # Polar day/night (no sunrise/sunset) or other astral edge cases.
+        if debug:
+            LOGGER.exception("Failed to compute solar times for %s", place.name)
+        sunrise = None
+        sunset = None
+        is_daytime = None
 
-    current_weather, temperature = fetch_weather(
-        place.latitude,
-        place.longitude,
-        debug=debug,
-    )
+    if fetch_external:
+        current_weather, temperature = fetch_weather(
+            place.latitude,
+            place.longitude,
+            debug=debug,
+        )
+    else:
+        current_weather, temperature = None, None
     current_date = now.date()
     last_day_of_month = date(
         now.year,
@@ -374,7 +388,7 @@ def build_context(
     if custom_context:
         holiday_zone = custom_context.get("holiday_zone")
     bank_holiday_name = None
-    if place.country_code.upper() == "FR":
+    if fetch_external and place.country_code.upper() == "FR":
         holidays = fetch_bank_holidays(
             current_date.year,
             place.country_code.upper(),
@@ -386,10 +400,13 @@ def build_context(
                     bank_holiday_name = holiday.name
                     break
     is_bank_holiday = bank_holiday_name is not None
-    is_school_holiday, current_school_holiday_name = school_holiday_status(
-        current_date,
-        holiday_zone,
-    )
+    if fetch_external:
+        is_school_holiday, current_school_holiday_name = school_holiday_status(
+            current_date,
+            holiday_zone,
+        )
+    else:
+        is_school_holiday, current_school_holiday_name = False, None
     context = {
         "current_time": now.time(),
         "current_date": current_date,

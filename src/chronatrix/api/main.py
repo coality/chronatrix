@@ -11,6 +11,7 @@ from chronatrix.core import Place, build_context
 
 from .auth import APIKeyPrincipal, APIKeyService, require_api_key
 from .cache import MultiLevelCache
+from .db import utcnow_naive
 from .models import ContextResponse
 from .providers.external import ProviderHub
 
@@ -93,6 +94,7 @@ async def get_context(
     lon: float | None = Query(default=None, ge=-180, le=180),
     country: str | None = Query(default=None, min_length=2, max_length=2),
     at: str | None = Query(default=None),
+    zone: str | None = Query(default=None, pattern="^[ABCabc]$"),
     _principal: APIKeyPrincipal = Depends(require_api_key),
 ) -> dict[str, object]:
     try:
@@ -111,7 +113,10 @@ async def get_context(
         longitude=lon if lon is not None else 0.0,
     )
 
-    flat = build_context(place=place, reference_datetime=ref_at)
+    # External providers (weather / holidays / school) are fetched below via the
+    # ProviderHub (cached + circuit-broken); skip build_context's own network calls.
+    flat = build_context(place=place, reference_datetime=ref_at, fetch_external=False)
+    school_zone = (zone or "A").upper()
 
     hub: ProviderHub = app.state.provider_hub
     cache: MultiLevelCache = app.state.cache
@@ -128,19 +133,24 @@ async def get_context(
         key = f"weather:{round(lat, 2):.2f}:{round(lon, 2):.2f}:{ref_at.strftime('%Y-%m-%dT%H:%M')}"
 
         async def fetch_weather() -> dict[str, object]:
-            payload, warning = await hub.weather(lat, lon, datetime.utcnow())
+            payload, warning = await hub.weather(lat, lon, utcnow_naive())
             if warning:
                 warnings.append(warning)
             return payload
 
-        weather, cache_hit, cache_age = await cache.get_or_set(key, 600, fetch_weather)
+        weather, cache_hit, cache_age = await cache.get_or_set(
+            key,
+            600,
+            fetch_weather,
+            cache_if=lambda p: p.get("condition") is not None,
+        )
         flat["current_weather"] = weather.get("condition")
         flat["temperature"] = weather.get("temperature_c")
 
     h_key = f"holidays:{(country or 'xx').lower()}:{ref_at.date().isoformat()}"
 
     async def fetch_holidays() -> dict[str, object]:
-        payload, warning = await hub.bank_holiday(ref_at.date(), country, datetime.utcnow())
+        payload, warning = await hub.bank_holiday(ref_at.date(), country, utcnow_naive())
         if warning:
             warnings.append(warning)
         return payload
@@ -149,10 +159,10 @@ async def get_context(
     flat["is_bank_holiday"] = holi["is_bank_holiday"]
     flat["current_bank_holiday_name"] = holi["name"]
 
-    s_key = f"school:fr:{ref_at.date().isoformat()}"
+    s_key = f"school:fr:{school_zone}:{ref_at.date().isoformat()}"
 
     async def fetch_school() -> dict[str, object]:
-        payload, warning = await hub.school_holiday(ref_at.date(), datetime.utcnow())
+        payload, warning = await hub.school_holiday(ref_at.date(), utcnow_naive(), zone=school_zone)
         if warning:
             warnings.append(warning)
         return payload
@@ -162,7 +172,7 @@ async def get_context(
     flat["current_school_holiday_name"] = school["name"]
 
     nested = _flat_to_nested(flat)
-    computed_at = datetime.utcnow()
+    computed_at = utcnow_naive()
     return {
         "meta": {
             "ref_at": ref_at,

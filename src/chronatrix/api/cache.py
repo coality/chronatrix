@@ -38,6 +38,7 @@ class MultiLevelCache:
         key: str,
         ttl_seconds: int,
         fetcher: Callable[[], Awaitable[dict[str, object]]],
+        cache_if: Callable[[dict[str, object]], bool] | None = None,
     ) -> tuple[dict[str, object], bool, int | None]:
         mem_hit = self.mem.get(key)
         if mem_hit:
@@ -59,6 +60,9 @@ class MultiLevelCache:
                 return payload, True, age_s
 
             payload = await fetcher()
-            self.mem.set(key, payload, ttl_seconds)
-            self.db.set_cache(key, payload, utcnow_naive() + timedelta(seconds=ttl_seconds))
+            # Only persist results the caller considers cacheable (e.g. skip
+            # transient provider failures so they are not sticky for the full TTL).
+            if cache_if is None or cache_if(payload):
+                self.mem.set(key, payload, ttl_seconds)
+                self.db.set_cache(key, payload, utcnow_naive() + timedelta(seconds=ttl_seconds))
             return payload, False, None

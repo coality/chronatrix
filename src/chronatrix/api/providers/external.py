@@ -59,12 +59,12 @@ class ProviderHub:
             breaker.on_failure(now)
             return {"is_bank_holiday": None, "name": None}, "holidays_unavailable"
 
-    async def school_holiday(self, target_date: date, now: datetime) -> tuple[dict[str, object], str | None]:
+    async def school_holiday(self, target_date: date, now: datetime, zone: str = "A") -> tuple[dict[str, object], str | None]:
         breaker = self.breakers["school"]
         if not breaker.allows(now):
             return {"is_school_holiday": None, "name": None}, "school_holidays_unavailable"
         try:
-            is_holiday, name = await asyncio.to_thread(core.school_holiday_status, target_date, "A")
+            is_holiday, name = await asyncio.to_thread(core.school_holiday_status, target_date, zone)
             breaker.on_success()
             return {"is_school_holiday": is_holiday, "name": name}, None
         except Exception:
